@@ -118,30 +118,98 @@ function inferAlg(jwk: JWK): string {
 }
 
 /**
- * Resolve the signing config from `JWT_PRIVATE_JWK` (asymmetric ECC/RSA private
- * key). `JWT_KEY_ID` is attached as the token `kid` when present.
- * Returns null when no key is configured.
+ * Resolve the signing config from `JWT_PRIVATE_JWK` (asymmetric ECC/RSA
+ * private key). `JWT_KEY_ID` is attached as the token `kid` when present.
+ * Returns null when no key is configured. Throws with a logged, specific
+ * reason when the stored value cannot be used. Only key *shape* is ever
+ * logged — never key material.
  */
 export async function getSigningConfig(env: Env): Promise<SigningConfig | null> {
   const jwkRaw = await resolveSecret(env.JWT_PRIVATE_JWK);
   if (!jwkRaw) return null;
 
-  // Strip fields (`key_ops`, `use`) that WebCrypto validates strictly — jose
-  // picks the correct key usages from `alg`, and exported JWKs can include
-  // these in a way that conflicts.
+  const trimmed = jwkRaw.trim();
+  if (trimmed.startsWith("-----BEGIN")) {
+    console.error("signing: JWT_PRIVATE_JWK looks like PEM; expected a JWK JSON object with kty/crv/x/y/d");
+    throw new Error("JWT_PRIVATE_JWK must be JWK JSON, not PEM");
+  }
+
+  // Tolerate double-encoded / quoted storage (e.g. pasted with surrounding quotes).
+  const attempts: string[] = [trimmed];
+  const first = trimmed[0];
+  const last = trimmed[trimmed.length - 1];
+  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+    attempts.push(trimmed.slice(1, -1));
+  }
+  let parsed: unknown = null;
+  let parseMsg = "";
+  for (const a of attempts) {
+    try {
+      parsed = JSON.parse(a);
+      parseMsg = "";
+      break;
+    } catch (e) {
+      parseMsg = e instanceof Error ? e.message : String(e);
+    }
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    console.error(
+      "signing: JWT_PRIVATE_JWK is not a JSON object",
+      JSON.stringify({ len: trimmed.length, startsWith: trimmed.slice(0, 20), parseError: parseMsg })
+    );
+    throw new Error("JWT_PRIVATE_JWK is not valid JWK JSON");
+  }
+
+  const raw = parsed as Record<string, unknown>;
+  const shape = {
+    keys: Object.keys(raw).sort(),
+    kty: typeof raw.kty === "string" ? raw.kty : null,
+    crv: typeof raw.crv === "string" ? raw.crv : null,
+    alg: typeof raw.alg === "string" ? raw.alg : null,
+    hasX: typeof raw.x === "string",
+    hasY: typeof raw.y === "string",
+    hasD: typeof raw.d === "string",
+  };
+  const ktyUpper = (shape.kty || "").toUpperCase();
+  if (ktyUpper !== "EC" && ktyUpper !== "RSA" && ktyUpper !== "OKP") {
+    console.error("signing: unexpected JWK kty", JSON.stringify(shape));
+    throw new Error("JWT_PRIVATE_JWK has unsupported kty (expected EC, RSA or OKP)");
+  }
+  if (!shape.hasX || !shape.hasY || !shape.hasD) {
+    console.error("signing: JWK is not a private key (missing x/y/d)", JSON.stringify(shape));
+    throw new Error("JWT_PRIVATE_JWK must be a private JWK containing x, y and d");
+  }
+
+  // Tolerate standard base64 (+//, padding) where base64url is expected, and
+  // strip fields (`key_ops`, `use`) that WebCrypto validates strictly.
+  const toB64u = (v: unknown) =>
+    typeof v === "string" ? v.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") : v;
   const priv = Object.fromEntries(
-    Object.entries(JSON.parse(jwkRaw) as JWK).filter(
-      ([k]) => k !== "key_ops" && k !== "use"
-    )
-  ) as JWK;
+    Object.entries(raw)
+      .filter(([k]) => k !== "key_ops" && k !== "use")
+      .map(([k, v]) => (k === "x" || k === "y" || k === "d" ? [k, toB64u(v)] : [k, v]))
+  ) as unknown as JWK;
   const alg = (priv.alg as string) || inferAlg(priv);
   // Public JWK = private JWK minus the private scalar `d`.
-  const publicJwk = Object.fromEntries(
-    Object.entries(priv).filter(([k]) => k !== "d")
-  ) as JWK;
-  const signKey = (await importJWK(priv, alg)) as CryptoKey | Uint8Array;
-  const verifyKey = (await importJWK(publicJwk, alg)) as CryptoKey | Uint8Array;
+  const publicJwk = Object.fromEntries(Object.entries(priv).filter(([k]) => k !== "d")) as unknown as JWK;
 
+  let signKey: CryptoKey | Uint8Array;
+  let verifyKey: CryptoKey | Uint8Array;
+  try {
+    signKey = (await importJWK(priv, alg)) as CryptoKey | Uint8Array;
+    verifyKey = (await importJWK(publicJwk, alg)) as CryptoKey | Uint8Array;
+  } catch (e) {
+    console.error(
+      "signing: importJWK failed",
+      JSON.stringify({ kty: shape.kty, crv: shape.crv, alg, importError: e instanceof Error ? e.message : String(e) })
+    );
+    throw new Error("JWT_PRIVATE_JWK could not be imported (check x/y/d values and crv)");
+  }
+
+  console.log(
+    "signing: JWK resolved",
+    JSON.stringify({ alg, kty: shape.kty, crv: shape.crv, kid: env.JWT_KEY_ID ?? null })
+  );
   return { keyId: env.JWT_KEY_ID, privateJwk: priv, alg, signKey, verifyKey };
 }
 
