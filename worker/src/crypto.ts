@@ -160,7 +160,25 @@ export async function getSigningConfig(env: Env): Promise<SigningConfig | null> 
     throw new Error("JWT_PRIVATE_JWK is not valid JWK JSON");
   }
 
-  const raw = parsed as Record<string, unknown>;
+  // Detect a JWKS wrapper ({"keys":[...]}) — Supabase publishes the *public*
+  // key set in this shape. It cannot be used for signing; we need the single
+  // *private* JWK object (with `d`). Unwrap a single-element set if present so
+  // the follow-up checks can report precisely what is still missing.
+  let candidate: unknown = parsed;
+  const maybeKeys = (parsed as Record<string, unknown>).keys;
+  if (Array.isArray(maybeKeys)) {
+    console.error(
+      "signing: JWT_PRIVATE_JWK looks like a JWKS public-key set; expected a single private JWK object with x/y/d",
+      JSON.stringify({ count: maybeKeys.length })
+    );
+    if (maybeKeys.length === 1 && maybeKeys[0] && typeof maybeKeys[0] === "object") {
+      candidate = maybeKeys[0];
+    } else {
+      throw new Error("JWT_PRIVATE_JWK must be a single private JWK object, not a JWKS {keys:[...]}");
+    }
+  }
+
+  const raw = candidate as Record<string, unknown>;
   const shape = {
     keys: Object.keys(raw).sort(),
     kty: typeof raw.kty === "string" ? raw.kty : null,
