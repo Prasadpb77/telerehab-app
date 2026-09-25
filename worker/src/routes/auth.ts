@@ -33,9 +33,17 @@ auth.post("/signup", async (c) => {
   }
   if (!fullName) return c.json({ error: "full_name is required" }, 400);
 
+  // Step-distinct error codes (no secret values) so the failing stage is
+  // identifiable from the browser response alone.
+  let supabase;
   try {
-    const supabase = await getSupabaseAdmin(c.env);
+    supabase = await getSupabaseAdmin(c.env);
+  } catch (err) {
+    console.error("signup: supabase init failed", err instanceof Error ? err.message : err);
+    return c.json({ error: "Service unavailable (auth-db)" }, 500);
+  }
 
+  try {
     const { data: existing, error: lookupErr } = await supabase
       .from("users")
       .select("id")
@@ -43,7 +51,7 @@ auth.post("/signup", async (c) => {
       .maybeSingle();
     if (lookupErr) {
       console.error("signup: users lookup failed", lookupErr.message);
-      return c.json({ error: "Signup temporarily unavailable" }, 500);
+      return c.json({ error: "Service unavailable (auth-query)" }, 500);
     }
     if (existing) return c.json({ error: "An account with this email already exists" }, 409);
 
@@ -72,10 +80,16 @@ auth.post("/signup", async (c) => {
       console.error("signup: patients insert failed", patientsErr.message);
     }
 
-    const signing = await getSigningConfig(c.env);
+    let signing;
+    try {
+      signing = await getSigningConfig(c.env);
+    } catch (err) {
+      console.error("signup: signing config failed", err instanceof Error ? err.message : err);
+      return c.json({ error: "Auth not configured (signing-invalid)" }, 500);
+    }
     if (!signing) {
       console.error("signup: JWT_PRIVATE_JWK missing or empty");
-      return c.json({ error: "Auth not configured" }, 500);
+      return c.json({ error: "Auth not configured (signing-missing)" }, 500);
     }
     let token: string;
     try {
@@ -103,9 +117,17 @@ auth.post("/login", async (c) => {
 
   if (!email || !password) return c.json({ error: "email and password are required" }, 400);
 
+  // Step-distinct error codes (no secret values) so the failing stage is
+  // identifiable from the browser response alone.
+  let supabase;
   try {
-    const supabase = await getSupabaseAdmin(c.env);
+    supabase = await getSupabaseAdmin(c.env);
+  } catch (err) {
+    console.error("login: supabase init failed", err instanceof Error ? err.message : err);
+    return c.json({ error: "Service unavailable (auth-db)" }, 500);
+  }
 
+  try {
     const { data: user, error: lookupErr } = await supabase
       .from("users")
       .select("id, role, email, full_name, phone, avatar_url, password_hash")
@@ -114,7 +136,7 @@ auth.post("/login", async (c) => {
 
     if (lookupErr) {
       console.error("login: users lookup failed", lookupErr.message);
-      return c.json({ error: "Login temporarily unavailable" }, 500);
+      return c.json({ error: "Service unavailable (auth-query)" }, 500);
     }
 
     // Generic error to avoid leaking which emails exist.
@@ -131,10 +153,16 @@ auth.post("/login", async (c) => {
     }
     if (!ok) return c.json({ error: "Invalid email or password" }, 401);
 
-    const signing = await getSigningConfig(c.env);
+    let signing;
+    try {
+      signing = await getSigningConfig(c.env);
+    } catch (err) {
+      console.error("login: signing config failed", err instanceof Error ? err.message : err);
+      return c.json({ error: "Auth not configured (signing-invalid)" }, 500);
+    }
     if (!signing) {
       console.error("login: JWT_PRIVATE_JWK missing or empty");
-      return c.json({ error: "Auth not configured" }, 500);
+      return c.json({ error: "Auth not configured (signing-missing)" }, 500);
     }
     let token: string;
     try {
