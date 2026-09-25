@@ -48,7 +48,7 @@ secret_name = "GOOGLE_REFRESH_TOKEN"
 # vars can hold non-secret config:
 [vars]
 GOOGLE_CALENDAR_ID = "primary"
-ALLOWED_ORIGIN = "https://neuro-telerehab-demo.pages.dev"
+ALLOWED_ORIGIN = "https://telerehab-app.pages.dev"
 # The `kid` shown for your current signing key in Supabase
 # (Project Settings → API → JWT Signing Keys). Required when using signing keys
 # (e.g. 92dfb5f8-f555-4a58-ba61-e0fac52af7d3) so PostgREST picks the right key.
