@@ -1,6 +1,6 @@
 name = "neuro-telerehab-api"
 main = "src/index.ts"
-compatibility_date = "2024-09-01"
+compatibility_date = "2025-08-01"
 workers_dev = true
 
 [observability]

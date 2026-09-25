@@ -33,39 +33,63 @@ auth.post("/signup", async (c) => {
   }
   if (!fullName) return c.json({ error: "full_name is required" }, 400);
 
-  const supabase = await getSupabaseAdmin(c.env);
+  try {
+    const supabase = await getSupabaseAdmin(c.env);
 
-  const { data: existing } = await supabase
-    .from("users")
-    .select("id")
-    .eq("email", email)
-    .maybeSingle();
-  if (existing) return c.json({ error: "An account with this email already exists" }, 409);
+    const { data: existing, error: lookupErr } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+    if (lookupErr) {
+      console.error("signup: users lookup failed", lookupErr.message);
+      return c.json({ error: "Signup temporarily unavailable" }, 500);
+    }
+    if (existing) return c.json({ error: "An account with this email already exists" }, 409);
 
-  const passwordHash = await hashPassword(password);
-  const id = crypto.randomUUID();
+    const passwordHash = await hashPassword(password);
+    const id = crypto.randomUUID();
 
-  const { data: user, error: userErr } = await supabase
-    .from("users")
-    .insert({
-      id,
-      role: "patient",
-      full_name: fullName,
-      email,
-      phone: body.phone ?? null,
-      password_hash: passwordHash,
-    })
-    .select("id, role, email, full_name, phone, avatar_url")
-    .single();
-  if (userErr) return c.json({ error: userErr.message }, 500);
+    const { data: user, error: userErr } = await supabase
+      .from("users")
+      .insert({
+        id,
+        role: "patient",
+        full_name: fullName,
+        email,
+        phone: body.phone ?? null,
+        password_hash: passwordHash,
+      })
+      .select("id, role, email, full_name, phone, avatar_url")
+      .single();
+    if (userErr) {
+      console.error("signup: users insert failed", userErr.message);
+      return c.json({ error: userErr.message }, 500);
+    }
 
-  await supabase.from("patients").insert({ user_id: id });
+    const { error: patientsErr } = await supabase.from("patients").insert({ user_id: id });
+    if (patientsErr) {
+      console.error("signup: patients insert failed", patientsErr.message);
+    }
 
-  const signing = await getSigningConfig(c.env);
-  if (!signing) return c.json({ error: "Auth not configured" }, 500);
-  const token = await signJwt({ sub: id, email, user_role: "patient" }, signing);
+    const signing = await getSigningConfig(c.env);
+    if (!signing) {
+      console.error("signup: JWT_PRIVATE_JWK missing or empty");
+      return c.json({ error: "Auth not configured" }, 500);
+    }
+    let token: string;
+    try {
+      token = await signJwt({ sub: id, email, user_role: "patient" }, signing);
+    } catch (err) {
+      console.error("signup: signJwt failed", err instanceof Error ? err.message : err);
+      return c.json({ error: "Token issuance failed" }, 500);
+    }
 
-  return c.json({ token, user }, 201);
+    return c.json({ token, user }, 201);
+  } catch (err) {
+    console.error("signup: unexpected error", err instanceof Error ? err.message : err);
+    return c.json({ error: "Signup temporarily unavailable" }, 500);
+  }
 });
 
 /**
@@ -79,31 +103,56 @@ auth.post("/login", async (c) => {
 
   if (!email || !password) return c.json({ error: "email and password are required" }, 400);
 
-  const supabase = await getSupabaseAdmin(c.env);
+  try {
+    const supabase = await getSupabaseAdmin(c.env);
 
-  const { data: user } = await supabase
-    .from("users")
-    .select("id, role, email, full_name, phone, avatar_url, password_hash")
-    .eq("email", email)
-    .maybeSingle();
+    const { data: user, error: lookupErr } = await supabase
+      .from("users")
+      .select("id, role, email, full_name, phone, avatar_url, password_hash")
+      .eq("email", email)
+      .maybeSingle();
 
-  // Generic error to avoid leaking which emails exist.
-  if (!user || !user.password_hash) {
-    return c.json({ error: "Invalid email or password" }, 401);
+    if (lookupErr) {
+      console.error("login: users lookup failed", lookupErr.message);
+      return c.json({ error: "Login temporarily unavailable" }, 500);
+    }
+
+    // Generic error to avoid leaking which emails exist.
+    if (!user || !user.password_hash) {
+      return c.json({ error: "Invalid email or password" }, 401);
+    }
+
+    let ok = false;
+    try {
+      ok = await verifyPassword(password, user.password_hash);
+    } catch (err) {
+      console.error("login: password verification failed", err instanceof Error ? err.message : err);
+      return c.json({ error: "Login temporarily unavailable" }, 500);
+    }
+    if (!ok) return c.json({ error: "Invalid email or password" }, 401);
+
+    const signing = await getSigningConfig(c.env);
+    if (!signing) {
+      console.error("login: JWT_PRIVATE_JWK missing or empty");
+      return c.json({ error: "Auth not configured" }, 500);
+    }
+    let token: string;
+    try {
+      token = await signJwt(
+        { sub: user.id, email: user.email, user_role: user.role },
+        signing
+      );
+    } catch (err) {
+      console.error("login: signJwt failed", err instanceof Error ? err.message : err);
+      return c.json({ error: "Token issuance failed" }, 500);
+    }
+
+    const { password_hash: _omit, ...safeUser } = user;
+    return c.json({ token, user: safeUser });
+  } catch (err) {
+    console.error("login: unexpected error", err instanceof Error ? err.message : err);
+    return c.json({ error: "Login temporarily unavailable" }, 500);
   }
-
-  const ok = await verifyPassword(password, user.password_hash);
-  if (!ok) return c.json({ error: "Invalid email or password" }, 401);
-
-  const signing = await getSigningConfig(c.env);
-  if (!signing) return c.json({ error: "Auth not configured" }, 500);
-  const token = await signJwt(
-    { sub: user.id, email: user.email, user_role: user.role },
-    signing
-  );
-
-  const { password_hash: _omit, ...safeUser } = user;
-  return c.json({ token, user: safeUser });
 });
 
 /** GET /api/auth/me — returns the authenticated user's profile. */
