@@ -47,18 +47,14 @@ supabase/  schema.sql — tables + RLS policies
 2. Copy your Project URL, anon key, and service role key
    (Settings → API).
 3. Configure JWT signing. Supabase Dashboard → **Project Settings → API →
-   JWT Signing Keys** shows your **current key** (e.g. `92dfb5f8-…`, ECC
-   P-256). Note its **key id**.
-   1. Open the key and copy its **private key in JWK format** — the JSON with
-      `kty:"EC"`, `crv:"P-256"`, `x`, `y` and the private `d`. (Supabase may
-      only reveal the private key at key **creation/rotation** time; rotate if
-      it isn't shown, then use the new id.)
-   2. Store that JSON string as the secret **`JWT_PRIVATE_JWK`**.
-   3. Set `JWT_KEY_ID` in `wrangler.toml` `[vars]` to the key id
-      (`92dfb5f8-f555-4a58-ba61-e0fac52af7d3`).
-   The Worker signs **ES256** (auto-detected from the JWK) and adds a `kid`
-   header; PostgREST verifies with the matching public key, so RLS `auth.uid()`
-   resolves to the token `sub`.
+   JWT Settings** shows your **JWT Secret** (this is the "Legacy JWT Secret"
+   view — if your project only shows "JWT Signing Keys" with no legacy
+   secret, click "Switch to legacy JWT secret" or generate one there first).
+   Copy that value and store it as the Worker secret **`SUPABASE_JWT_SECRET`**.
+   The Worker signs **HS256** with this same shared secret; Supabase's own
+   PostgREST/RLS layer verifies with that identical secret, so RLS
+   `auth.uid()` resolves to the token's `sub` claim on both sides. No key id,
+   no public/private key pair — just the one secret value.
 
 ### 2. Google Cloud
 1. Create a project, enable the **Google Calendar API**.
@@ -72,9 +68,8 @@ supabase/  schema.sql — tables + RLS policies
 ### 3. Worker
 Secrets are bound via `[[secrets_store_secrets]]` in `wrangler.toml` (set
 `store_id` to your Secrets Store id) and read with `await env.<BINDING>.get()`:
-`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_PRIVATE_JWK`,
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`,
 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`.
-`JWT_KEY_ID` goes in `[vars]` (see step 1.3).
 
 ```bash
 cd worker

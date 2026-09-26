@@ -9,10 +9,11 @@ export interface Env {
   // Secrets Store bindings (or string env vars for local dev / fallback)
   SUPABASE_URL: SecretValue;
   SUPABASE_SERVICE_ROLE_KEY: SecretValue;
-  // JWT signing: the private key JWK (JSON string) of the Supabase asymmetric
-  // signing key (ECC P-256 → ES256, or RSA → RS256). Supabase's PostgREST
-  // verifies with the matching public key, so `auth.uid()` resolves to `sub`.
-  JWT_PRIVATE_JWK: SecretValue;
+  // JWT signing: the Supabase project's Legacy JWT Secret (Project Settings →
+  // API → JWT Settings). A shared HS256 secret — same value signs (this
+  // Worker) and verifies (Supabase's own PostgREST/RLS), so `auth.uid()`
+  // resolves to the token's `sub` claim on both sides.
+  SUPABASE_JWT_SECRET: SecretValue;
   GOOGLE_CLIENT_ID: SecretValue;
   GOOGLE_CLIENT_SECRET: SecretValue;
   GOOGLE_REFRESH_TOKEN: SecretValue;
@@ -20,9 +21,6 @@ export interface Env {
   // Non-secret vars
   GOOGLE_CALENDAR_ID: string;
   ALLOWED_ORIGIN: string;
-  // The `kid` of the Supabase signing key; attached to issued tokens so
-  // PostgREST selects the matching public key.
-  JWT_KEY_ID?: string;
 }
 
 /**

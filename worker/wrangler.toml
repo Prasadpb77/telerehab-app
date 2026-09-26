@@ -22,13 +22,13 @@ binding = "SUPABASE_SERVICE_ROLE_KEY"
 store_id = "e0a7dcad230f4191b02e000833b9edc4"
 secret_name = "SUPABASE_SERVICE_ROLE_KEY"
 
-# JWT signing: private key JWK (JSON string) of the Supabase asymmetric signing
-# key (ECC P-256 → ES256). PostgREST verifies with the matching PUBLIC key, so
-# RLS `auth.uid()` resolves to the token `sub` claim.
+# JWT signing: the Supabase project's Legacy JWT Secret (Project Settings →
+# API → JWT Settings → "JWT Secret"). Shared HS256 secret used both to sign
+# tokens here and to verify them on Supabase's side (PostgREST/RLS).
 [[secrets_store_secrets]]
-binding = "JWT_PRIVATE_JWK"
+binding = "SUPABASE_JWT_SECRET"
 store_id = "e0a7dcad230f4191b02e000833b9edc4"
-secret_name = "JWT_PRIVATE_JWK"
+secret_name = "SUPABASE_JWT_SECRET"
 
 [[secrets_store_secrets]]
 binding = "GOOGLE_CLIENT_ID"
@@ -49,7 +49,3 @@ secret_name = "GOOGLE_REFRESH_TOKEN"
 [vars]
 GOOGLE_CALENDAR_ID = "primary"
 ALLOWED_ORIGIN = "https://telerehab-app.pages.dev"
-# The `kid` shown for your current signing key in Supabase
-# (Project Settings → API → JWT Signing Keys). Required when using signing keys
-# (e.g. 92dfb5f8-f555-4a58-ba61-e0fac52af7d3) so PostgREST picks the right key.
-JWT_KEY_ID = "92dfb5f8-f555-4a58-ba61-e0fac52af7d3"

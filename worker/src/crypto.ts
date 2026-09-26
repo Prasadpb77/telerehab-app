@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify, importJWK, type JWK } from "jose";
+import { SignJWT, jwtVerify } from "jose";
 import { type Env, resolveSecret } from "./env";
 
 /**
@@ -7,10 +7,11 @@ import { type Env, resolveSecret } from "./env";
  * Passwords are stored using PBKDF2-HMAC-SHA256 with a per-user random salt.
  * Storage format: `pbkdf2$<iterations>$<saltB64>$<hashB64>`.
  *
- * JWTs are signed with the Supabase project's asymmetric signing key (ECC
- * P-256 → ES256, or RSA → RS256), provided as a private JWK in
- * `JWT_PRIVATE_JWK` with its `kid` in `JWT_KEY_ID`. Supabase's PostgREST
- * verifies with the matching public key, so `auth.uid()` resolves to `sub`.
+ * JWTs are signed with HS256 using the Supabase project's Legacy JWT Secret
+ * (Project Settings → API → JWT Settings → "JWT Secret"), provided as
+ * `SUPABASE_JWT_SECRET`. This is a shared secret: the same value both signs
+ * and verifies, and it's also what Supabase's own PostgREST/RLS layer uses
+ * to verify the token, so `auth.uid()` resolves to `sub` there too.
  */
 
 const PBKDF2_ITERATIONS = 100_000;
@@ -89,146 +90,40 @@ export interface JwtUserClaims {
   [key: string]: unknown;
 }
 
-/** Resolved asymmetric signing strategy. */
+/** Resolved HS256 signing strategy — one shared secret signs and verifies. */
 export interface SigningConfig {
-  keyId?: string;
-  privateJwk: JWK;
-  alg: string;
-  /** Key used to sign. */
-  signKey: CryptoKey | Uint8Array;
-  /** Key used to verify (the derived public key). */
-  verifyKey: CryptoKey | Uint8Array;
-}
-
-function inferAlg(jwk: JWK): string {
-  const kty = (jwk.kty || "").toUpperCase();
-  if (kty === "EC") {
-    switch ((jwk.crv || "").toUpperCase()) {
-      case "P-384":
-        return "ES384";
-      case "P-521":
-        return "ES512";
-      default:
-        return "ES256";
-    }
-  }
-  if (kty === "RSA") return "RS256";
-  if (kty === "OKP") return "EdDSA";
-  return "ES256";
+  alg: "HS256";
+  /** Same key used for both signing and verifying (symmetric). */
+  signKey: Uint8Array;
+  verifyKey: Uint8Array;
 }
 
 /**
- * Resolve the signing config from `JWT_PRIVATE_JWK` (asymmetric ECC/RSA
- * private key). `JWT_KEY_ID` is attached as the token `kid` when present.
- * Returns null when no key is configured. Throws with a logged, specific
- * reason when the stored value cannot be used. Only key *shape* is ever
- * logged — never key material.
+ * Resolve the signing config from `SUPABASE_JWT_SECRET` — the Legacy JWT
+ * Secret shown at Project Settings → API → JWT Settings. Returns null when
+ * no secret is configured. Throws with a logged, specific reason when the
+ * stored value cannot be used. The secret value itself is never logged.
  */
 export async function getSigningConfig(env: Env): Promise<SigningConfig | null> {
-  const jwkRaw = await resolveSecret(env.JWT_PRIVATE_JWK);
-  if (!jwkRaw) return null;
+  const secretRaw = await resolveSecret(env.SUPABASE_JWT_SECRET);
+  if (!secretRaw) return null;
 
-  const trimmed = jwkRaw.trim();
-  if (trimmed.startsWith("-----BEGIN")) {
-    console.error("signing: JWT_PRIVATE_JWK looks like PEM; expected a JWK JSON object with kty/crv/x/y/d");
-    throw new Error("JWT_PRIVATE_JWK must be JWK JSON, not PEM");
-  }
-
-  // Tolerate double-encoded / quoted storage (e.g. pasted with surrounding quotes).
-  const attempts: string[] = [trimmed];
+  let trimmed = secretRaw.trim();
+  // Tolerate accidental surrounding quotes from copy-paste into a secrets store.
   const first = trimmed[0];
   const last = trimmed[trimmed.length - 1];
   if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
-    attempts.push(trimmed.slice(1, -1));
-  }
-  let parsed: unknown = null;
-  let parseMsg = "";
-  for (const a of attempts) {
-    try {
-      parsed = JSON.parse(a);
-      parseMsg = "";
-      break;
-    } catch (e) {
-      parseMsg = e instanceof Error ? e.message : String(e);
-    }
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    console.error(
-      "signing: JWT_PRIVATE_JWK is not a JSON object",
-      JSON.stringify({ len: trimmed.length, startsWith: trimmed.slice(0, 20), parseError: parseMsg })
-    );
-    throw new Error("JWT_PRIVATE_JWK is not valid JWK JSON");
+    trimmed = trimmed.slice(1, -1);
   }
 
-  // Detect a JWKS wrapper ({"keys":[...]}) — Supabase publishes the *public*
-  // key set in this shape. It cannot be used for signing; we need the single
-  // *private* JWK object (with `d`). Unwrap a single-element set if present so
-  // the follow-up checks can report precisely what is still missing.
-  let candidate: unknown = parsed;
-  const maybeKeys = (parsed as Record<string, unknown>).keys;
-  if (Array.isArray(maybeKeys)) {
-    console.error(
-      "signing: JWT_PRIVATE_JWK looks like a JWKS public-key set; expected a single private JWK object with x/y/d",
-      JSON.stringify({ count: maybeKeys.length })
-    );
-    if (maybeKeys.length === 1 && maybeKeys[0] && typeof maybeKeys[0] === "object") {
-      candidate = maybeKeys[0];
-    } else {
-      throw new Error("JWT_PRIVATE_JWK must be a single private JWK object, not a JWKS {keys:[...]}");
-    }
+  if (trimmed.length < 32) {
+    console.error("signing: SUPABASE_JWT_SECRET looks too short to be valid", JSON.stringify({ len: trimmed.length }));
+    throw new Error("SUPABASE_JWT_SECRET is set but looks too short/invalid");
   }
 
-  const raw = candidate as Record<string, unknown>;
-  const shape = {
-    keys: Object.keys(raw).sort(),
-    kty: typeof raw.kty === "string" ? raw.kty : null,
-    crv: typeof raw.crv === "string" ? raw.crv : null,
-    alg: typeof raw.alg === "string" ? raw.alg : null,
-    hasX: typeof raw.x === "string",
-    hasY: typeof raw.y === "string",
-    hasD: typeof raw.d === "string",
-  };
-  const ktyUpper = (shape.kty || "").toUpperCase();
-  if (ktyUpper !== "EC" && ktyUpper !== "RSA" && ktyUpper !== "OKP") {
-    console.error("signing: unexpected JWK kty", JSON.stringify(shape));
-    throw new Error("JWT_PRIVATE_JWK has unsupported kty (expected EC, RSA or OKP)");
-  }
-  if (!shape.hasX || !shape.hasY || !shape.hasD) {
-    console.error("signing: JWK is not a private key (missing x/y/d)", JSON.stringify(shape));
-    throw new Error("JWT_PRIVATE_JWK must be a private JWK containing x, y and d");
-  }
-
-  // Tolerate standard base64 (+//, padding) where base64url is expected, and
-  // strip fields (`key_ops`, `use`) that WebCrypto validates strictly.
-  const toB64u = (v: unknown) =>
-    typeof v === "string" ? v.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") : v;
-  const priv = Object.fromEntries(
-    Object.entries(raw)
-      .filter(([k]) => k !== "key_ops" && k !== "use")
-      .map(([k, v]) => (k === "x" || k === "y" || k === "d" ? [k, toB64u(v)] : [k, v]))
-  ) as unknown as JWK;
-  const alg = (priv.alg as string) || inferAlg(priv);
-  // Public JWK = private JWK minus the private scalar `d`.
-  const publicJwk = Object.fromEntries(Object.entries(priv).filter(([k]) => k !== "d")) as unknown as JWK;
-
-  let signKey: CryptoKey | Uint8Array;
-  let verifyKey: CryptoKey | Uint8Array;
-  try {
-    signKey = (await importJWK(priv, alg)) as CryptoKey | Uint8Array;
-    verifyKey = (await importJWK(publicJwk, alg)) as CryptoKey | Uint8Array;
-  } catch (e) {
-    console.error(
-      "signing: importJWK failed",
-      JSON.stringify({ kty: shape.kty, crv: shape.crv, alg, importError: e instanceof Error ? e.message : String(e) })
-    );
-    throw new Error("JWT_PRIVATE_JWK could not be imported (check x/y/d values and crv)");
-  }
-
-  console.log(
-    "signing: JWK resolved",
-    JSON.stringify({ alg, kty: shape.kty, crv: shape.crv, kid: env.JWT_KEY_ID ?? null })
-  );
-  return { keyId: env.JWT_KEY_ID, privateJwk: priv, alg, signKey, verifyKey };
+  const keyBytes = new TextEncoder().encode(trimmed);
+  console.log("signing: HS256 secret resolved", JSON.stringify({ len: trimmed.length }));
+  return { alg: "HS256", signKey: keyBytes, verifyKey: keyBytes };
 }
 
 /**
@@ -251,9 +146,7 @@ export async function signJwt(
     .setAudience("authenticated")
     .setExpirationTime(expiresIn);
 
-  jwt.setProtectedHeader(
-    config.keyId ? { alg: config.alg, kid: config.keyId } : { alg: config.alg }
-  );
+  jwt.setProtectedHeader({ alg: config.alg });
 
   return await jwt.sign(config.signKey);
 }

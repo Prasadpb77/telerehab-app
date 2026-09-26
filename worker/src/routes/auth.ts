@@ -88,7 +88,7 @@ auth.post("/signup", async (c) => {
       return c.json({ error: "Auth not configured (signing-invalid)" }, 500);
     }
     if (!signing) {
-      console.error("signup: JWT_PRIVATE_JWK missing or empty");
+      console.error("signup: SUPABASE_JWT_SECRET missing or empty");
       return c.json({ error: "Auth not configured (signing-missing)" }, 500);
     }
     let token: string;
@@ -161,7 +161,7 @@ auth.post("/login", async (c) => {
       return c.json({ error: "Auth not configured (signing-invalid)" }, 500);
     }
     if (!signing) {
-      console.error("login: JWT_PRIVATE_JWK missing or empty");
+      console.error("login: SUPABASE_JWT_SECRET missing or empty");
       return c.json({ error: "Auth not configured (signing-missing)" }, 500);
     }
     let token: string;
