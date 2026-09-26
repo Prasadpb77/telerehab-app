@@ -5,6 +5,7 @@ import { appointments } from "./routes/appointments";
 import { meetTranscript } from "./routes/meetTranscript";
 import { chatbot } from "./routes/chatbot";
 import { auth } from "./routes/auth";
+import { publicRoutes } from "./routes/publicRoutes";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -23,5 +24,6 @@ app.route("/api/auth", auth);
 app.route("/api/appointments", appointments);
 app.route("/api/meet-transcript", meetTranscript);
 app.route("/api/chatbot", chatbot);
+app.route("/api/public", publicRoutes);
 
 export default app;

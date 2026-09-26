@@ -240,7 +240,7 @@ create policy users_insert_self on users
 -- SEED ACCOUNTS
 -- Phase 1 ships with exactly one doctor + one demo patient. Passwords below
 -- are PBKDF2-hashed (100k iterations, SHA-256); CHANGE THEM in production.
---   doctor@telerehab.local  / Doctor123!
+--   neha@doctor.co  / Doctor123!
 --   patient@telerehab.local / Patient123!
 -- ============================================================================
 insert into users (id, role, full_name, email, password_hash) values

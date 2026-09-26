@@ -9,7 +9,15 @@ export interface AppUser {
   avatar_url?: string | null;
 }
 
-export type AppointmentStatus = "scheduled" | "completed" | "cancelled" | "no_show";
+export type AppointmentStatus = "pending" | "scheduled" | "completed" | "cancelled" | "no_show";
+
+export interface AvailabilitySlot {
+  id: string;
+  doctor_id: string;
+  starts_at: string;
+  ends_at: string;
+  is_booked: boolean;
+}
 
 export interface Appointment {
   id: string;
@@ -18,10 +26,15 @@ export interface Appointment {
   starts_at: string;
   ends_at: string;
   status: AppointmentStatus;
+  slot_id: string | null;
+  visit_address: string | null;
+  whatsapp_confirmed_at: string | null;
   google_event_id: string | null;
   google_meet_url: string | null;
   notes: string | null;
 }
+
+export type ConsentPurpose = "account_and_booking" | "health_notes" | "marketing_communications";
 
 export type NoteStatus = "draft" | "approved" | "rejected";
 

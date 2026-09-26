@@ -12,6 +12,20 @@ export const appointments = new Hono<{ Bindings: Env }>();
 
 appointments.use("*", requireAuth);
 
+function toWhatsAppDigits(phone: string): string {
+  return phone.replace(/[^\d]/g, "");
+}
+
+function buildWhatsAppLink(phone: string, message: string): string {
+  return `https://wa.me/${toWhatsAppDigits(phone)}?text=${encodeURIComponent(message)}`;
+}
+
+function formatSlot(startsAt: string): string {
+  return new Date(startsAt).toLocaleString("en-IN", {
+    weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
+  });
+}
+
 /**
  * Doctor creates a slot (optionally pre-assigned to a patient, or left open
  * and booked later — Phase 1 assumes doctor assigns patient at creation).
@@ -105,6 +119,129 @@ appointments.post("/", requireRole("doctor"), async (c) => {
 });
 
 /**
+ * Doctor accepts a patient-requested (status='pending') appointment:
+ *  1. Create the Calendar event + Meet link (idempotent via requestId = appointment id).
+ *  2. Patch the appointment: status=scheduled, google_event_id, google_meet_url.
+ *  3. Return a ready-to-send WhatsApp click-to-chat confirmation link.
+ * Direct doctor-created appointments (via POST / below) skip this step
+ * entirely since they're already confirmed at creation.
+ */
+appointments.post("/:id/accept", requireRole("doctor"), async (c) => {
+  const doctor = c.get("user" as never) as AuthedUser;
+  const id = c.req.param("id");
+  const supabase = await getSupabaseAdmin(c.env);
+
+  const { data: appt, error } = await supabase
+    .from("appointments")
+    .select("*, users!appointments_patient_id_fkey(full_name, phone, email)")
+    .eq("id", id)
+    .single();
+  if (error || !appt) return c.json({ error: "Appointment not found" }, 404);
+  if (appt.status !== "pending") return c.json({ error: "Only pending appointments can be accepted" }, 400);
+
+  const patientInfo = appt.users as { full_name: string; phone: string | null; email: string };
+
+  try {
+    const { googleEventId, meetUrl } = await createCalendarEventWithMeet(c.env, {
+      requestId: appt.id,
+      summary: `Neuro TeleRehab session — ${patientInfo.full_name}`,
+      description: appt.notes ?? "",
+      startIso: appt.starts_at,
+      endIso: appt.ends_at,
+      attendeeEmails: [patientInfo.email, doctor.email],
+    });
+
+    const { data: updated, error: updateErr } = await supabase
+      .from("appointments")
+      .update({ status: "scheduled", google_event_id: googleEventId, google_meet_url: meetUrl })
+      .eq("id", id)
+      .select()
+      .single();
+    if (updateErr) throw new Error(updateErr.message);
+
+    let whatsapp_url: string | null = null;
+    if (patientInfo.phone) {
+      const message =
+        `Hi ${patientInfo.full_name}, this is your Neuro TeleRehab clinic. ` +
+        `Your session on ${formatSlot(appt.starts_at)} is confirmed. ` +
+        (meetUrl ? `Join here when it's time: ${meetUrl}. ` : "") +
+        `Reply here if you need to reschedule.`;
+      whatsapp_url = buildWhatsAppLink(patientInfo.phone, message);
+    }
+
+    return c.json({ appointment: updated, whatsapp_url });
+  } catch (err: any) {
+    return c.json({ error: `Failed to accept: ${err.message}` }, 502);
+  }
+});
+
+/**
+ * Doctor reschedules a pending or scheduled appointment to a different open
+ * slot from availability_slots (frees the old slot if one was set, books the
+ * new one, patches the SAME Calendar event's time rather than creating a
+ * new one).
+ */
+appointments.post("/:id/reschedule", requireRole("doctor"), async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json<{ new_slot_id: string }>();
+  const supabase = await getSupabaseAdmin(c.env);
+
+  const { data: appt, error } = await supabase
+    .from("appointments")
+    .select("*, users!appointments_patient_id_fkey(full_name, phone)")
+    .eq("id", id)
+    .single();
+  if (error || !appt) return c.json({ error: "Appointment not found" }, 404);
+  if (appt.status === "cancelled" || appt.status === "completed") {
+    return c.json({ error: "Cannot reschedule a cancelled/completed appointment" }, 400);
+  }
+
+  const { data: newSlot, error: slotErr } = await supabase
+    .from("availability_slots")
+    .select("*")
+    .eq("id", body.new_slot_id)
+    .eq("is_booked", false)
+    .single();
+  if (slotErr || !newSlot) return c.json({ error: "Selected new slot is not available" }, 400);
+
+  if (appt.slot_id) {
+    await supabase.from("availability_slots").update({ is_booked: false }).eq("id", appt.slot_id);
+  }
+  await supabase.from("availability_slots").update({ is_booked: true }).eq("id", newSlot.id);
+
+  if (appt.google_event_id) {
+    try {
+      await updateCalendarEvent(c.env, appt.google_event_id, {
+        startIso: newSlot.starts_at,
+        endIso: newSlot.ends_at,
+      });
+    } catch (err: any) {
+      return c.json({ error: `Slot updated but Calendar sync failed: ${err.message}` }, 502);
+    }
+  }
+
+  const { data: updated, error: updateErr } = await supabase
+    .from("appointments")
+    .update({ slot_id: newSlot.id, starts_at: newSlot.starts_at, ends_at: newSlot.ends_at })
+    .eq("id", id)
+    .select()
+    .single();
+  if (updateErr) return c.json({ error: updateErr.message }, 500);
+
+  const patientInfo = appt.users as { full_name: string; phone: string | null };
+  let whatsapp_url: string | null = null;
+  if (patientInfo.phone) {
+    const message =
+      `Hi ${patientInfo.full_name}, this is your Neuro TeleRehab clinic. ` +
+      `Your session has been rescheduled to ${formatSlot(newSlot.starts_at)}. ` +
+      `Please confirm this works, or reply here for a different time.`;
+    whatsapp_url = buildWhatsAppLink(patientInfo.phone, message);
+  }
+
+  return c.json({ appointment: updated, whatsapp_url });
+});
+
+/**
  * Edit a slot's time — updates the existing Calendar event in place rather
  * than creating a new one (per spec: "editing updates the existing event").
  */
@@ -155,7 +292,7 @@ appointments.post("/:id/cancel", requireRole("doctor"), async (c) => {
 
   const { data: appt, error } = await supabase
     .from("appointments")
-    .select("*")
+    .select("*, users!appointments_patient_id_fkey(full_name, phone)")
     .eq("id", id)
     .single();
   if (error || !appt) return c.json({ error: "Appointment not found" }, 404);
@@ -172,7 +309,19 @@ appointments.post("/:id/cancel", requireRole("doctor"), async (c) => {
     .single();
 
   if (updateErr) return c.json({ error: updateErr.message }, 500);
-  return c.json({ appointment: updated });
+
+  // The free_slot_on_cancel trigger handles freeing appt.slot_id automatically.
+
+  const patientInfo = appt.users as { full_name: string; phone: string | null };
+  let whatsapp_url: string | null = null;
+  if (patientInfo.phone) {
+    const message =
+      `Hi ${patientInfo.full_name}, this is your Neuro TeleRehab clinic. ` +
+      `Unfortunately we need to cancel your upcoming session. Please reply here or rebook on our site — sorry for the inconvenience.`;
+    whatsapp_url = buildWhatsAppLink(patientInfo.phone, message);
+  }
+
+  return c.json({ appointment: updated, whatsapp_url });
 });
 
 /** List appointments — patient sees own, doctor sees all (RLS would also

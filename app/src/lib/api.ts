@@ -32,11 +32,15 @@ async function publicFetch(path: string, options: RequestInit = {}) {
 
 export const api = {
   auth: {
-    signup: (payload: { full_name: string; email: string; password: string }) =>
+    signup: (payload: { full_name: string; email: string; password: string; phone?: string }) =>
       publicFetch("/api/auth/signup", { method: "POST", body: JSON.stringify(payload) }),
     login: (email: string, password: string) =>
       publicFetch("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
     me: () => authedFetch("/api/auth/me"),
+  },
+  dataRequest: {
+    submit: (payload: { patient_id?: string; contact_email: string; request_type: string; details?: string }) =>
+      publicFetch("/api/public/data-request", { method: "POST", body: JSON.stringify(payload) }),
   },
   appointments: {
     list: () => authedFetch("/api/appointments"),
@@ -44,6 +48,9 @@ export const api = {
       authedFetch("/api/appointments", { method: "POST", body: JSON.stringify(payload) }),
     update: (id: string, payload: { starts_at?: string; ends_at?: string }) =>
       authedFetch(`/api/appointments/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+    accept: (id: string) => authedFetch(`/api/appointments/${id}/accept`, { method: "POST" }),
+    reschedule: (id: string, newSlotId: string) =>
+      authedFetch(`/api/appointments/${id}/reschedule`, { method: "POST", body: JSON.stringify({ new_slot_id: newSlotId }) }),
     cancel: (id: string) => authedFetch(`/api/appointments/${id}/cancel`, { method: "POST" }),
   },
   meetTranscript: {

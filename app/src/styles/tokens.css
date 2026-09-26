@@ -96,6 +96,7 @@ input:focus, textarea:focus, select:focus {
   color: var(--color-ink-muted);
 }
 .badge-scheduled { background: #E4EFEA; color: var(--color-primary-dark); }
+.badge-pending { background: #F4E9DD; color: var(--color-accent); }
 .badge-approved { background: #E4EFEA; color: var(--color-success); }
 .badge-draft { background: #F4E9DD; color: var(--color-accent); }
 .badge-cancelled { background: #F3E3E0; color: var(--color-danger); }

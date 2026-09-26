@@ -21,7 +21,7 @@ interface AuthContextValue {
   loading: boolean;
   isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<AuthUser>;
-  signUp: (input: { full_name: string; email: string; password: string }) => Promise<AuthUser>;
+  signUp: (input: { full_name: string; email: string; password: string; phone?: string }) => Promise<AuthUser>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -72,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     full_name: string;
     email: string;
     password: string;
+    phone?: string;
   }): Promise<AuthUser> {
     const res = (await api.auth.signup(input)) as { token: string; user: AuthUser };
     setToken(res.token);
