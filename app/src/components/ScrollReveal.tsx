@@ -3,9 +3,11 @@ import { useEffect, useRef, useState, ReactNode, CSSProperties } from "react";
 interface ScrollRevealProps {
   children: ReactNode;
   /** Direction the element travels in from. */
-  from?: "up" | "down" | "left" | "right" | "fade";
+  from?: "up" | "down" | "left" | "right" | "fade" | "scale" | "subtle-up";
   /** Stagger delay in ms — useful for revealing a list of siblings in sequence. */
   delay?: number;
+  /** Duration in ms */
+  duration?: number;
   /** Only ever animate once (default) or re-trigger every time it re-enters view. */
   once?: boolean;
   className?: string;
@@ -13,23 +15,26 @@ interface ScrollRevealProps {
   as?: keyof JSX.IntrinsicElements;
 }
 
-const OFFSETS: Record<NonNullable<ScrollRevealProps["from"]>, string> = {
-  up: "translateY(28px)",
-  down: "translateY(-28px)",
-  left: "translateX(28px)",
-  right: "translateX(-28px)",
-  fade: "translateY(0)",
+const OFFSETS: Record<NonNullable<ScrollRevealProps["from"]>, { transform: string; scale?: string }> = {
+  up: { transform: "translateY(36px)" },
+  "subtle-up": { transform: "translateY(16px)" },
+  down: { transform: "translateY(-36px)" },
+  left: { transform: "translateX(36px)" },
+  right: { transform: "translateX(-36px)" },
+  scale: { transform: "scale(0.96)" },
+  fade: { transform: "none" },
 };
 
 /**
  * Fades + translates children into place as they cross into the viewport.
- * Pure CSS transition driven by an IntersectionObserver toggling one class —
- * no animation library, so it stays cheap and respects reduced-motion.
+ * Pure CSS transition driven by an IntersectionObserver toggling state —
+ * Zero external bundle overhead, 60fps GPU-accelerated, and respects prefers-reduced-motion.
  */
 export default function ScrollReveal({
   children,
   from = "up",
   delay = 0,
+  duration = 750,
   once = true,
   className = "",
   style,
@@ -57,13 +62,14 @@ export default function ScrollReveal({
           setVisible(false);
         }
       },
-      { threshold: 0.15, rootMargin: "0px 0px -8% 0px" }
+      { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
     );
     observer.observe(node);
     return () => observer.disconnect();
   }, [once]);
 
   const Tag = as as any;
+  const initialOffset = OFFSETS[from];
 
   return (
     <Tag
@@ -71,8 +77,8 @@ export default function ScrollReveal({
       className={className}
       style={{
         opacity: visible ? 1 : 0,
-        transform: visible ? "translate(0, 0)" : OFFSETS[from],
-        transition: `opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
+        transform: visible ? "translate(0, 0) scale(1)" : initialOffset.transform,
+        transition: `opacity ${duration}ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, transform ${duration}ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
         willChange: "opacity, transform",
         ...style,
       }}

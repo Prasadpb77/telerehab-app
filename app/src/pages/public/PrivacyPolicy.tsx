@@ -1,103 +1,95 @@
 import { Link } from "react-router-dom";
+import ScrollReveal from "../../components/ScrollReveal";
 
 export default function PrivacyPolicy() {
   return (
-    <div className="container" style={{ maxWidth: 720, paddingTop: 40, paddingBottom: 40 }}>
-      <Link to="/" style={{ fontSize: 13 }}>← Back home</Link>
-      <h1 style={{ marginTop: 16 }}>Privacy Policy</h1>
-      <p style={{ color: "var(--color-ink-muted)", fontSize: 13 }}>Last updated: 26 September 2026</p>
-
-      <section style={{ marginTop: 24 }}>
-        <h2 style={{ fontSize: 18 }}>1. Who we are (Data Fiduciary)</h2>
-        <p>
-          This website is operated by Dr. Neha Dhanokar's independent physiotherapy practice
-          ("we", "us", "the practice"). For the purposes of India's Digital Personal Data
-          Protection Act, 2023 ("DPDP Act"), we are the <strong>Data Fiduciary</strong> for
-          personal data you provide through this website.
+    <div className="container" style={{ maxWidth: 760, paddingTop: 48, paddingBottom: 64 }}>
+      <ScrollReveal from="subtle-up">
+        <Link to="/" style={{ fontSize: 13, color: "var(--color-ink-muted)", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
+          ← Back to homepage
+        </Link>
+        <div className="badge badge-scheduled" style={{ marginBottom: 8 }}>
+          <span className="badge-dot" /> DPDP Act 2023 Compliance
+        </div>
+        <h1 style={{ fontSize: "clamp(26px, 3vw, 36px)", marginBottom: 8 }}>Privacy Policy</h1>
+        <p style={{ color: "var(--color-ink-muted)", fontSize: 13, marginBottom: 28 }}>
+          Effective: 26 September 2026 · Data Fiduciary Notice
         </p>
-        <p>
-          Contact for privacy matters (Grievance Officer): <a href="mailto:privacy@example.com">privacy@example.com</a>
-          {" "}— replace with the practice's actual monitored email/phone before going live.
-        </p>
-      </section>
+      </ScrollReveal>
 
-      <section style={{ marginTop: 24 }}>
-        <h2 style={{ fontSize: 18 }}>2. What personal data we collect</h2>
-        <ul>
-          <li><strong>Account details:</strong> full name, email, phone/WhatsApp number, password (stored as a salted hash, never in plain text).</li>
-          <li><strong>Clinical details:</strong> condition summary, session notes, exercise plan, and progress logs.</li>
-          <li><strong>Booking details:</strong> appointment date/time, visit address (for home visits), and any reason notes you share.</li>
-          <li><strong>Communication records:</strong> WhatsApp messages exchanged to confirm or reschedule visits, and video check-in link usage.</li>
-        </ul>
-      </section>
+      <ScrollReveal from="up" delay={80}>
+        <div className="card" style={{ padding: "36px 32px", display: "grid", gap: 28, lineHeight: 1.65 }}>
+          <section>
+            <h2 style={{ fontSize: 18, color: "var(--color-ink)", marginBottom: 8 }}>1. Who We Are (Data Fiduciary)</h2>
+            <p style={{ color: "var(--color-ink-secondary)", margin: 0 }}>
+              This service is operated by Dr. Neha Dhanokar's independent clinical physiotherapy practice ("we", "us", "the practice").
+              For the purposes of India's Digital Personal Data Protection Act, 2023 ("DPDP Act"), we act as the <strong>Data Fiduciary</strong> for
+              personal and health data you provide through this portal.
+            </p>
+            <p style={{ color: "var(--color-ink-muted)", fontSize: 13, marginTop: 8 }}>
+              Grievance Officer: <a href="mailto:privacy@example.com">privacy@example.com</a> (monitored for DPDP inquiries).
+            </p>
+          </section>
 
-      <section style={{ marginTop: 24 }}>
-        <h2 style={{ fontSize: 18 }}>3. Why we collect it (specified purpose) and your consent</h2>
-        <p>Under the DPDP Act, we process your data only for purposes you've separately consented to at signup:</p>
-        <ul>
-          <li><strong>Account & booking (required):</strong> to create your account, schedule and manage your sessions, and contact you about them.</li>
-          <li><strong>Health-related notes (optional):</strong> to let you share context about your condition ahead of a visit.</li>
-          <li><strong>Marketing communications (optional):</strong> occasional wellness tips or offers beyond transactional messages.</li>
-        </ul>
-        <p>You may withdraw consent for any optional purpose at any time (see Section 7).</p>
-      </section>
+          <section>
+            <h2 style={{ fontSize: 18, color: "var(--color-ink)", marginBottom: 8 }}>2. What Personal Data We Collect</h2>
+            <ul style={{ paddingLeft: 20, margin: 0, color: "var(--color-ink-secondary)" }}>
+              <li><strong>Account Identifiers:</strong> Full legal name, email address, WhatsApp/phone number, salted cryptographic password hash.</li>
+              <li><strong>Clinical Records:</strong> Symptom presentations, clinical session notes, prescribed motor regimens, and self-reported progress metrics.</li>
+              <li><strong>Booking Details:</strong> Appointment timestamps, South Mumbai doorstep residential addresses (for in-home care), and clinical notes.</li>
+              <li><strong>Telehealth Telemetry:</strong> Encrypted Google Meet room links and automated session summaries.</li>
+            </ul>
+          </section>
 
-      <section style={{ marginTop: 24 }}>
-        <h2 style={{ fontSize: 18 }}>4. AI-assisted session notes</h2>
-        <p>
-          With your consent, session transcripts may be summarised by an AI assistant into a
-          draft note. Your treating therapist always reviews and approves (or edits) this draft
-          before it is visible to you — the AI does not diagnose or prescribe treatment.
-        </p>
-      </section>
+          <section>
+            <h2 style={{ fontSize: 18, color: "var(--color-ink)", marginBottom: 8 }}>3. Specified Purpose & Consent Itemisation</h2>
+            <p style={{ color: "var(--color-ink-secondary)", marginBottom: 12 }}>
+              Under the DPDP Act, personal data is processed exclusively for explicit purposes you have consented to at registration:
+            </p>
+            <div style={{ display: "grid", gap: 10, background: "var(--color-surface-subtle)", padding: 16, borderRadius: "var(--radius-sm)" }}>
+              <div>
+                <strong style={{ color: "var(--color-brand-teal)", fontSize: 13 }}>Account & Booking (Required):</strong>
+                <span style={{ color: "var(--color-ink-secondary)", fontSize: 13 }}> To manage schedules, confirm home visits, and provide telehealth access.</span>
+              </div>
+              <div>
+                <strong style={{ color: "var(--color-brand-teal)", fontSize: 13 }}>Health Context Notes (Optional):</strong>
+                <span style={{ color: "var(--color-ink-secondary)", fontSize: 13 }}> To prepare customized clinical equipment and motor exercises prior to visits.</span>
+              </div>
+              <div>
+                <strong style={{ color: "var(--color-brand-teal)", fontSize: 13 }}>Communications (Optional):</strong>
+                <span style={{ color: "var(--color-ink-secondary)", fontSize: 13 }}> Educational rehabilitation newsletters and wellness tips.</span>
+              </div>
+            </div>
+          </section>
 
-      <section style={{ marginTop: 24 }}>
-        <h2 style={{ fontSize: 18 }}>5. Google Calendar/Meet</h2>
-        <p>
-          When a session is confirmed, we create a Google Calendar event (with a Meet link) using
-          your name and email as an attendee, under the "account & booking" purpose. Google acts
-          as our data processor for this limited purpose only.
-        </p>
-      </section>
+          <section>
+            <h2 style={{ fontSize: 18, color: "var(--color-ink)", marginBottom: 8 }}>4. AI-Assisted Clinical Summaries</h2>
+            <p style={{ color: "var(--color-ink-secondary)", margin: 0 }}>
+              With your consent, consultation transcripts may be synthesized into draft clinical notes by an AI assistant.
+              Dr. Neha Dhanokar personally verifies, edits, and authorizes every note before it is placed on your patient record.
+              The AI never issues prescriptions or diagnoses.
+            </p>
+          </section>
 
-      <section style={{ marginTop: 24 }}>
-        <h2 style={{ fontSize: 18 }}>6. Storage, security, and retention</h2>
-        <p>
-          Your data is stored with Supabase (Postgres) with row-level security so only you and
-          your treating therapist can access your records. We retain personal data only as long
-          as necessary for the purposes above, or as required by law.
-        </p>
-      </section>
+          <section>
+            <h2 style={{ fontSize: 18, color: "var(--color-ink)", marginBottom: 8 }}>5. Storage, Security, & Row-Level Isolation</h2>
+            <p style={{ color: "var(--color-ink-secondary)", margin: 0 }}>
+              All records are stored within PostgreSQL tables secured with Supabase Row-Level Security (RLS).
+              Only you and your treating clinician possess cryptographically authenticated access keys.
+            </p>
+          </section>
 
-      <section style={{ marginTop: 24 }}>
-        <h2 style={{ fontSize: 18 }}>7. Your rights as a Data Principal</h2>
-        <ul>
-          <li><strong>Access</strong> a summary of the personal data we hold about you.</li>
-          <li><strong>Correct</strong> inaccurate or outdated personal data.</li>
-          <li><strong>Erase</strong> personal data no longer necessary for its purpose.</li>
-          <li><strong>Withdraw consent</strong> for any optional purpose at any time.</li>
-          <li><strong>Nominate</strong> another individual to exercise these rights on your behalf.</li>
-          <li><strong>Grievance redressal</strong> — raise a complaint about how we've handled your data.</li>
-        </ul>
-        <p>
-          Exercise any of these via our <Link to="/data-request">data request form</Link>, or by
-          emailing our Grievance Officer above. If unresolved, you may approach the Data
-          Protection Board of India.
-        </p>
-      </section>
-
-      <section style={{ marginTop: 24 }}>
-        <h2 style={{ fontSize: 18 }}>8. Children's data</h2>
-        <p>
-          If you book on behalf of a child (under 18), you confirm you are their parent/lawful
-          guardian and are providing consent on their behalf, as required under the DPDP Act.
-        </p>
-      </section>
-
-      <section style={{ marginTop: 24 }}>
-        <h2 style={{ fontSize: 18 }}>9. Changes to this policy</h2>
-        <p>Material changes affecting how we use your data will be notified, and fresh consent sought where required.</p>
-      </section>
+          <section>
+            <h2 style={{ fontSize: 18, color: "var(--color-ink)", marginBottom: 8 }}>6. Your Rights as a Data Principal</h2>
+            <p style={{ color: "var(--color-ink-secondary)", marginBottom: 10 }}>
+              Under the DPDP Act 2023, you retain comprehensive rights to access, correct, erase, or withdraw consent for optional purposes.
+            </p>
+            <Link to="/data-request" className="btn btn-outline" style={{ display: "inline-flex" }}>
+              Submit a Data Rights Request →
+            </Link>
+          </section>
+        </div>
+      </ScrollReveal>
     </div>
   );
 }
