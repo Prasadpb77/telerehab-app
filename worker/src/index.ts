@@ -7,6 +7,8 @@ import { chatbot } from "./routes/chatbot";
 import { auth } from "./routes/auth";
 import { publicRoutes } from "./routes/publicRoutes";
 import { doctor } from "./routes/doctor";
+import { finance } from "./routes/finance";
+import { insights } from "./routes/insights";
 import { getSupabaseAdmin } from "./supabaseAdmin";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -28,6 +30,8 @@ app.route("/api/meet-transcript", meetTranscript);
 app.route("/api/chatbot", chatbot);
 app.route("/api/public", publicRoutes);
 app.route("/api/doctor", doctor);
+app.route("/api/doctor/finance", finance);
+app.route("/api/doctor/insights", insights);
 
 // ---------------------------------------------------------------------------
 // Cron: generate WhatsApp reminder links for sessions happening in the next

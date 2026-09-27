@@ -1,0 +1,31 @@
+{
+  "name": "Neuro TeleRehab",
+  "short_name": "Neuro TeleRehab",
+  "description": "Neuro TeleRehabilitation — home visits, secure video consultations, therapy plans and progress tracking with Dr. Neha Dhanokar.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#1D534A",
+  "background_color": "#F8F9FA",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

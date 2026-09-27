@@ -25,6 +25,8 @@ import DoctorCalendar from "../pages/doctor/Calendar";
 import DoctorChatbot from "../pages/doctor/Chatbot";
 import DoctorExerciseLibrary from "../pages/doctor/ExerciseLibrary";
 import DoctorReminders from "../pages/doctor/Reminders";
+import DoctorFinance from "../pages/doctor/Finance";
+import DoctorInsights from "../pages/doctor/Insights";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Home /> },
@@ -65,6 +67,8 @@ export const router = createBrowserRouter([
       { path: "calendar", element: <DoctorCalendar /> },
       { path: "exercises", element: <DoctorExerciseLibrary /> },
       { path: "reminders", element: <DoctorReminders /> },
+      { path: "finance", element: <DoctorFinance /> },
+      { path: "insights", element: <DoctorInsights /> },
       { path: "chatbot", element: <DoctorChatbot /> },
     ],
   },

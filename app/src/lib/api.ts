@@ -95,4 +95,39 @@ export const api = {
     send: (payload: { message: string; patient_id?: string }) =>
       authedFetch("/api/chatbot", { method: "POST", body: JSON.stringify(payload) }),
   },
+  finance: {
+    query: (month: string, year: string) => {
+      const q = new URLSearchParams();
+      if (month) q.set("month", month);
+      q.set("year", year);
+      return q.toString();
+    },
+    categories: () => authedFetch("/api/doctor/finance/categories"),
+    createCategory: (name: string) =>
+      authedFetch("/api/doctor/finance/categories", { method: "POST", body: JSON.stringify({ name }) }),
+    deleteCategory: (id: string) =>
+      authedFetch(`/api/doctor/finance/categories/${id}`, { method: "DELETE" }),
+    expenses: (month: string, year: string) =>
+      authedFetch(`/api/doctor/finance/expenses?${api.finance.query(month, year)}`),
+    createExpense: (payload: { amount: number; category_id?: string | null; expense_date?: string; description?: string }) =>
+      authedFetch("/api/doctor/finance/expenses", { method: "POST", body: JSON.stringify(payload) }),
+    deleteExpense: (id: string) =>
+      authedFetch(`/api/doctor/finance/expenses/${id}`, { method: "DELETE" }),
+    income: (month: string, year: string) =>
+      authedFetch(`/api/doctor/finance/income?${api.finance.query(month, year)}`),
+    createIncome: (payload: { amount: number; source?: string; income_date?: string; description?: string }) =>
+      authedFetch("/api/doctor/finance/income", { method: "POST", body: JSON.stringify(payload) }),
+    deleteIncome: (id: string) =>
+      authedFetch(`/api/doctor/finance/income/${id}`, { method: "DELETE" }),
+    pnl: (month: string, year: string) =>
+      authedFetch(`/api/doctor/finance/pnl?${api.finance.query(month, year)}`),
+  },
+  insights: {
+    summary: (month: string, year: string) => {
+      const q = new URLSearchParams();
+      if (month) q.set("month", month);
+      q.set("year", year);
+      return authedFetch(`/api/doctor/insights/summary?${q.toString()}`);
+    },
+  },
 };

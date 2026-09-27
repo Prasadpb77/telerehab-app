@@ -51,17 +51,25 @@ export default function DoctorPatientProfile() {
   const [paymentDrafts, setPaymentDrafts] = useState<Record<string, { status: string; amount: string }>>({});
   const [savingPaymentId, setSavingPaymentId] = useState<string | null>(null);
 
+  // Insights profile fields (patients.area / patients.therapy_type).
+  const [area, setArea] = useState("");
+  const [therapyType, setTherapyType] = useState("");
+  const [savingDetails, setSavingDetails] = useState(false);
+
   async function loadAll() {
     if (!patientId) return;
     try {
-      const [{ data: p }, { data: n }, { data: a }, { data: lib }, { data: appts }] = await Promise.all([
+      const [{ data: p }, { data: pr }, { data: n }, { data: a }, { data: lib }, { data: appts }] = await Promise.all([
         supabase.from("users").select("*").eq("id", patientId).single(),
+        supabase.from("patients").select("area, therapy_type").eq("user_id", patientId).maybeSingle(),
         supabase.from("session_notes").select("*").eq("patient_id", patientId).order("created_at", { ascending: false }),
         supabase.from("patient_exercises").select("*, exercises(*)").eq("patient_id", patientId),
         supabase.from("exercises").select("*"),
         supabase.from("appointments").select("*").eq("patient_id", patientId).order("starts_at", { ascending: false }),
       ]);
       setPatient(p as AppUser);
+      setArea((pr as { area?: string | null } | null)?.area ?? "");
+      setTherapyType((pr as { therapy_type?: string | null } | null)?.therapy_type ?? "");
       setNotes((n as SessionNote[]) ?? []);
       setAssignments((a as PatientExercise[]) ?? []);
       setLibrary((lib as Exercise[]) ?? []);
@@ -210,6 +218,30 @@ export default function DoctorPatientProfile() {
     }
   }
 
+  // Insights profile fields - save area + therapy type (upsert so it works
+  // even if the patients row was never created for this account).
+  async function saveDetails() {
+    if (!patientId) return;
+    setSavingDetails(true);
+    setActionError(null);
+    try {
+      const { error } = await supabase.from("patients").upsert(
+        {
+          user_id: patientId,
+          area: area.trim() || null,
+          therapy_type: therapyType || null,
+        },
+        { onConflict: "user_id" }
+      );
+      if (error) throw new Error(error.message);
+      await loadAll();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not save details");
+    } finally {
+      setSavingDetails(false);
+    }
+  }
+
   // Feature 8 - save manual payment status/amount for one appointment.
   async function savePayment(id: string) {
     const draft = paymentDrafts[id];
@@ -348,6 +380,46 @@ export default function DoctorPatientProfile() {
           )}
         </div>
       </ScrollReveal>
+
+      {/* Insights profile fields */}
+      <div className="card" style={{ padding: "18px 20px", marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <span style={{ fontSize: 16 }}>📍</span>
+          <h3 style={{ fontSize: 15, margin: 0 }}>Patient Details</h3>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 }}>
+          <div>
+            <label>Area</label>
+            <input
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
+              placeholder="e.g. Colaba, Worli"
+            />
+          </div>
+          <div>
+            <label>Therapy type</label>
+            <select value={therapyType} onChange={(e) => setTherapyType(e.target.value)}>
+              <option value="">Not set</option>
+              <option value="Orthopaedic">Orthopaedic</option>
+              <option value="Neuro">Neuro</option>
+              <option value="Geriatric">Geriatric</option>
+              <option value="Post-operative">Post-operative</option>
+              <option value="Women's health">Women's health</option>
+              <option value="General">General</option>
+            </select>
+          </div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <button
+            className="btn btn-outline"
+            style={{ padding: "7px 16px", fontSize: 13 }}
+            onClick={saveDetails}
+            disabled={savingDetails}
+          >
+            {savingDetails ? "Saving…" : "Save details"}
+          </button>
+        </div>
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))", gap: 28 }}>
         {/* Left Column: Session Clinical Notes */}
