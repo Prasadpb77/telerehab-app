@@ -130,7 +130,7 @@ auth.post("/login", async (c) => {
   try {
     const { data: user, error: lookupErr } = await supabase
       .from("users")
-      .select("id, role, email, full_name, phone, avatar_url, password_hash")
+      .select("id, role, email, full_name, phone, avatar_url, password_hash, must_change_password")
       .eq("email", email)
       .maybeSingle();
 
@@ -190,10 +190,43 @@ auth.get("/me", requireAuth, async (c) => {
 
   const { data: user, error } = await supabase
     .from("users")
-    .select("id, role, email, full_name, phone, avatar_url")
+    .select("id, role, email, full_name, phone, avatar_url, must_change_password")
     .eq("id", authed.id)
     .single();
   if (error || !user) return c.json({ error: "User not found" }, 404);
 
   return c.json({ user });
+});
+
+/**
+ * POST /api/auth/change-password - authenticated user sets a new password.
+ * Used to complete the forced first-login flow for doctor-created accounts
+ * (`must_change_password = true`), and available for any logged-in user.
+ * Clears `must_change_password` so the "Set your password" gate stops firing.
+ */
+auth.post("/change-password", requireAuth, async (c) => {
+  const authed = c.get("user" as never) as AuthedUser;
+  const body = await c.req.json<{ new_password?: string }>();
+  const newPassword = body.new_password;
+
+  if (!newPassword || newPassword.length < 8) {
+    return c.json({ error: "Password must be at least 8 characters" }, 400);
+  }
+
+  const supabase = await getSupabaseAdmin(c.env);
+  const passwordHash = await hashPassword(newPassword);
+
+  const { data: updated, error } = await supabase
+    .from("users")
+    .update({ password_hash: passwordHash, must_change_password: false })
+    .eq("id", authed.id)
+    .select("id, role, email, full_name, phone, avatar_url, must_change_password")
+    .single();
+
+  if (error || !updated) {
+    console.error("change-password: update failed", error?.message);
+    return c.json({ error: "Could not update password" }, 500);
+  }
+
+  return c.json({ user: updated });
 });

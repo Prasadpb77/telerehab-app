@@ -123,6 +123,31 @@ const doctorLinks = [
     ),
   },
   {
+    to: "/doctor/exercises",
+    label: "Exercise Library",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6.5 6.5 17.5 17.5"></path>
+        <path d="m21 21-1-1"></path>
+        <path d="m3 3 1 1"></path>
+        <path d="m18 22 4-4"></path>
+        <path d="m2 6 4-4"></path>
+        <path d="m3 10 7-7"></path>
+        <path d="m14 21 7-7"></path>
+      </svg>
+    ),
+  },
+  {
+    to: "/doctor/reminders",
+    label: "Reminders",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+    ),
+  },
+  {
     to: "/doctor/chatbot",
     label: "Clinical Assistant",
     icon: (

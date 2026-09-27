@@ -1,10 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, FormEvent } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { api } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
-import type { AppUser, SessionNote, PatientExercise, Exercise } from "../../types/db";
+import type { AppUser, SessionNote, PatientExercise, Exercise, Appointment } from "../../types/db";
 import ScrollReveal from "../../components/ScrollReveal";
+
+const SITE_URL = "https://telerehab-app.pages.dev";
+
+type ApptWithPay = Appointment & { treatment_plan_id?: string | null; payment_status?: string; payment_amount?: number | null };
+
+function toWhatsAppDigits(phone: string): string {
+  return phone.replace(/[^\d]/g, "");
+}
+
+function buildWhatsAppLink(phone: string, message: string): string {
+  return `https://wa.me/${toWhatsAppDigits(phone)}?text=${encodeURIComponent(message)}`;
+}
 
 export default function DoctorPatientProfile() {
   const { patientId } = useParams<{ patientId: string }>();
@@ -13,24 +25,60 @@ export default function DoctorPatientProfile() {
   const [notes, setNotes] = useState<SessionNote[]>([]);
   const [assignments, setAssignments] = useState<PatientExercise[]>([]);
   const [library, setLibrary] = useState<Exercise[]>([]);
+  const [appointments, setAppointments] = useState<ApptWithPay[]>([]);
   const [editingNote, setEditingNote] = useState<SessionNote | null>(null);
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [regenerating, setRegenerating] = useState(false);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const [startingMeet, setStartingMeet] = useState(false);
+  const [adhocMeetUrl, setAdhocMeetUrl] = useState<string | null>(null);
+
+  const [seriesCount, setSeriesCount] = useState("6");
+  const [seriesDate, setSeriesDate] = useState("");
+  const [seriesTime, setSeriesTime] = useState("");
+  const [seriesPattern, setSeriesPattern] = useState<"weekly" | "twice_weekly" | "custom">("weekly");
+  const [seriesGapDays, setSeriesGapDays] = useState("10");
+  const [seriesDuration, setSeriesDuration] = useState("30");
+  const [seriesLabel, setSeriesLabel] = useState("");
+  const [creatingSeries, setCreatingSeries] = useState(false);
+  const [seriesResult, setSeriesResult] = useState<{ created: number; requested: number; failures: number } | null>(null);
+
+  const [paymentDrafts, setPaymentDrafts] = useState<Record<string, { status: string; amount: string }>>({});
+  const [savingPaymentId, setSavingPaymentId] = useState<string | null>(null);
+
   async function loadAll() {
     if (!patientId) return;
     try {
-      const [{ data: p }, { data: n }, { data: a }, { data: lib }] = await Promise.all([
+      const [{ data: p }, { data: n }, { data: a }, { data: lib }, { data: appts }] = await Promise.all([
         supabase.from("users").select("*").eq("id", patientId).single(),
         supabase.from("session_notes").select("*").eq("patient_id", patientId).order("created_at", { ascending: false }),
         supabase.from("patient_exercises").select("*, exercises(*)").eq("patient_id", patientId),
         supabase.from("exercises").select("*"),
+        supabase.from("appointments").select("*").eq("patient_id", patientId).order("starts_at", { ascending: false }),
       ]);
       setPatient(p as AppUser);
       setNotes((n as SessionNote[]) ?? []);
       setAssignments((a as PatientExercise[]) ?? []);
       setLibrary((lib as Exercise[]) ?? []);
+      const apptRows = (appts as ApptWithPay[]) ?? [];
+      setAppointments(apptRows);
+      setPaymentDrafts((prev) => {
+        const next = { ...prev };
+        apptRows.forEach((ap) => {
+          if (!next[ap.id]) {
+            next[ap.id] = {
+              status: ap.payment_status ?? "unpaid",
+              amount: ap.payment_amount != null ? String(ap.payment_amount) : "",
+            };
+          }
+        });
+        return next;
+      });
     } finally {
       setLoading(false);
     }
@@ -83,6 +131,101 @@ export default function DoctorPatientProfile() {
       await loadAll();
     } finally {
       setAssigningId(null);
+    }
+  }
+
+  // Feature 1 - resend / regenerate a temporary password.
+  async function regeneratePassword() {
+    if (!patientId) return;
+    setRegenerating(true);
+    setActionError(null);
+    setTempPassword(null);
+    try {
+      const res = (await api.doctor.regeneratePassword(patientId)) as { temp_password: string };
+      setTempPassword(res.temp_password);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not regenerate password");
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
+  // Feature 6 - instant ad-hoc Meet.
+  async function startMeetNow() {
+    if (!patientId) return;
+    setStartingMeet(true);
+    setActionError(null);
+    setAdhocMeetUrl(null);
+    try {
+      const res = (await api.appointments.adhoc(patientId)) as { google_meet_url: string | null };
+      setAdhocMeetUrl(res.google_meet_url);
+      await loadAll();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not start Meet");
+    } finally {
+      setStartingMeet(false);
+    }
+  }
+
+  // Feature 3 - mark a past scheduled appointment as a no-show.
+  async function markNoShow(id: string) {
+    if (!confirm("Mark this session as a no-show?")) return;
+    setActionError(null);
+    try {
+      await api.appointments.noShow(id);
+      await loadAll();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not mark no-show");
+    }
+  }
+
+  // Feature 7 - create a bulk/recurring series of sessions.
+  async function createSeries(e: FormEvent) {
+    e.preventDefault();
+    if (!patientId) return;
+    setActionError(null);
+    setSeriesResult(null);
+    setCreatingSeries(true);
+    try {
+      const startIso = new Date(`${seriesDate}T${seriesTime}`).toISOString();
+      const res = (await api.appointments.bulkCreate({
+        patient_id: patientId,
+        count: Number(seriesCount),
+        start_iso: startIso,
+        pattern: seriesPattern,
+        gap_days: seriesPattern === "custom" ? Number(seriesGapDays) : undefined,
+        duration_min: Number(seriesDuration),
+        label: seriesLabel || undefined,
+      })) as { created_count: number; requested_count: number; failures: unknown[] };
+      setSeriesResult({
+        created: res.created_count,
+        requested: res.requested_count,
+        failures: res.failures?.length ?? 0,
+      });
+      await loadAll();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not create series");
+    } finally {
+      setCreatingSeries(false);
+    }
+  }
+
+  // Feature 8 - save manual payment status/amount for one appointment.
+  async function savePayment(id: string) {
+    const draft = paymentDrafts[id];
+    if (!draft) return;
+    setSavingPaymentId(id);
+    setActionError(null);
+    try {
+      await api.appointments.setPayment(id, {
+        payment_status: draft.status,
+        payment_amount: draft.amount === "" ? null : Number(draft.amount),
+      });
+      await loadAll();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not save payment");
+    } finally {
+      setSavingPaymentId(null);
     }
   }
 
@@ -153,12 +296,56 @@ export default function DoctorPatientProfile() {
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <Link to="/doctor/calendar" className="btn btn-primary" style={{ padding: "8px 16px", fontSize: 13 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="btn btn-primary" onClick={startMeetNow} disabled={startingMeet} style={{ padding: "8px 16px", fontSize: 13 }}>
+                {startingMeet ? "Starting…" : "Start Meet now"}
+              </button>
+              <button className="btn btn-outline" onClick={regeneratePassword} disabled={regenerating} style={{ padding: "8px 16px", fontSize: 13 }}>
+                {regenerating ? "Generating…" : "Resend / reset password"}
+              </button>
+              <Link to="/doctor/calendar" className="btn btn-outline" style={{ padding: "8px 16px", fontSize: 13 }}>
                 Schedule Next Session
               </Link>
             </div>
           </div>
+
+          {actionError && (
+            <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--color-danger-bg)", color: "var(--color-danger)", borderRadius: "var(--radius-xs)", fontSize: 13 }}>
+              {actionError}
+            </div>
+          )}
+
+          {tempPassword && (
+            <div style={{ marginTop: 12, padding: "14px 16px", background: "var(--color-success-bg)", border: "1px solid rgba(21,128,61,0.2)", borderRadius: "var(--radius-sm)" }}>
+              <div style={{ fontSize: 13, color: "var(--color-ink-secondary)" }}>
+                New temporary password: <strong style={{ fontFamily: "monospace" }}>{tempPassword}</strong>
+                <br />The patient must set their own password on next login.
+              </div>
+              {patient.phone && (
+                <a
+                  className="btn"
+                  href={buildWhatsAppLink(
+                    patient.phone,
+                    `Hi ${patient.full_name}, your Neuro TeleRehab login has been reset. Log in at ${SITE_URL} with ${patient.email} and this temporary password: ${tempPassword}. You'll be asked to set your own password on first login.`
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ marginTop: 10, background: "#E8F8EE", color: "#1E7E34", borderColor: "#C3E6CB", fontSize: 13 }}
+                >
+                  Send via WhatsApp
+                </a>
+              )}
+            </div>
+          )}
+
+          {adhocMeetUrl && (
+            <div style={{ marginTop: 12, padding: "14px 16px", background: "var(--color-info-bg)", border: "1px solid rgba(3,105,161,0.2)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 13, color: "var(--color-ink-secondary)" }}>Instant Meet created for this patient.</div>
+              <a className="btn btn-primary pulse-active" href={adhocMeetUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>
+                Join Google Meet ↗
+              </a>
+            </div>
+          )}
         </div>
       </ScrollReveal>
 
@@ -338,6 +525,143 @@ export default function DoctorPatientProfile() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Feature 7 - Create a series of sessions */}
+          <div className="card" style={{ padding: "20px", marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 16 }}>🔁</span>
+              <h3 style={{ fontSize: 15, margin: 0 }}>Create a Series</h3>
+            </div>
+            <p style={{ fontSize: 13, color: "var(--color-ink-muted)", marginBottom: 14 }}>
+              Schedule multiple sessions at once. Each session gets its own Calendar event and Meet link.
+            </p>
+            <form onSubmit={createSeries} style={{ display: "grid", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
+                <div>
+                  <label>Date</label>
+                  <input type="date" value={seriesDate} onChange={(e) => setSeriesDate(e.target.value)} required />
+                </div>
+                <div>
+                  <label>Time</label>
+                  <input type="time" value={seriesTime} onChange={(e) => setSeriesTime(e.target.value)} required />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
+                <div>
+                  <label>Sessions</label>
+                  <input type="number" min={1} max={52} value={seriesCount} onChange={(e) => setSeriesCount(e.target.value)} />
+                </div>
+                <div>
+                  <label>Duration (min)</label>
+                  <input type="number" min={15} step={15} value={seriesDuration} onChange={(e) => setSeriesDuration(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <label>Recurrence</label>
+                <select value={seriesPattern} onChange={(e) => setSeriesPattern(e.target.value as typeof seriesPattern)}>
+                  <option value="weekly">Weekly</option>
+                  <option value="twice_weekly">Twice weekly</option>
+                  <option value="custom">Custom gap (days)</option>
+                </select>
+              </div>
+              {seriesPattern === "custom" && (
+                <div>
+                  <label>Every N days</label>
+                  <input type="number" min={1} value={seriesGapDays} onChange={(e) => setSeriesGapDays(e.target.value)} />
+                </div>
+              )}
+              <div>
+                <label>Label (optional)</label>
+                <input value={seriesLabel} onChange={(e) => setSeriesLabel(e.target.value)} placeholder="e.g. Post-op knee protocol" />
+              </div>
+              <button className="btn btn-primary" type="submit" disabled={creatingSeries} style={{ justifyContent: "center" }}>
+                {creatingSeries ? "Creating sessions…" : "Create series"}
+              </button>
+            </form>
+
+            {seriesResult && (
+              <div style={{ marginTop: 12, padding: "10px 12px", background: seriesResult.failures ? "var(--color-warning-bg)" : "var(--color-success-bg)", borderRadius: "var(--radius-xs)", fontSize: 13 }}>
+                Created {seriesResult.created} of {seriesResult.requested} sessions.
+                {seriesResult.failures > 0 && ` ${seriesResult.failures} failed — the others are still valid.`}
+              </div>
+            )}
+          </div>
+
+          {/* Features 3 & 8 - Appointments with no-show marking and payment tracking */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <h2 style={{ fontSize: 19, margin: 0 }}>Appointments</h2>
+              <span className="badge">{appointments.length} total</span>
+            </div>
+            <div style={{ display: "grid", gap: 12 }}>
+              {appointments.length === 0 && (
+                <div className="card" style={{ padding: "20px", textAlign: "center" }}>
+                  <p style={{ color: "var(--color-ink-muted)", fontSize: 13, margin: 0 }}>No appointments on record.</p>
+                </div>
+              )}
+              {appointments.map((a) => {
+                const isPast = new Date(a.ends_at ?? a.starts_at) < new Date();
+                const canNoShow = a.status === "scheduled" && isPast;
+                const draft = paymentDrafts[a.id] ?? { status: "unpaid", amount: "" };
+                return (
+                  <div key={a.id} className="card" style={{ padding: "16px 18px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-ink)" }}>
+                        {new Date(a.starts_at).toLocaleString("en-IN", {
+                          weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
+                        })}
+                      </div>
+                      <span className={`badge badge-${a.status === "scheduled" ? "scheduled" : a.status === "no_show" ? "cancelled" : a.status}`}>
+                        {a.status.replace("_", " ")}
+                      </span>
+                    </div>
+
+                    {a.google_meet_url && a.status === "scheduled" && (
+                      <a className="btn btn-outline" href={a.google_meet_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, padding: "5px 10px", marginBottom: 10 }}>
+                        Launch Meet ↗
+                      </a>
+                    )}
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", paddingTop: 10, borderTop: "1px solid var(--color-border-subtle)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <label style={{ margin: 0, fontSize: 12 }}>Payment:</label>
+                        <select
+                          value={draft.status}
+                          onChange={(e) => setPaymentDrafts({ ...paymentDrafts, [a.id]: { ...draft, status: e.target.value } })}
+                          style={{ width: "auto", minWidth: 110, padding: "6px 10px", minHeight: 34 }}
+                        >
+                          <option value="unpaid">Unpaid</option>
+                          <option value="paid">Paid</option>
+                          <option value="waived">Waived</option>
+                        </select>
+                        <input
+                          type="number"
+                          placeholder="Amount"
+                          value={draft.amount}
+                          onChange={(e) => setPaymentDrafts({ ...paymentDrafts, [a.id]: { ...draft, amount: e.target.value } })}
+                          style={{ width: 100, minHeight: 34, padding: "6px 10px" }}
+                        />
+                        <button
+                          className="btn btn-outline"
+                          style={{ padding: "5px 12px", fontSize: 12 }}
+                          onClick={() => savePayment(a.id)}
+                          disabled={savingPaymentId === a.id}
+                        >
+                          {savingPaymentId === a.id ? "Saving…" : "Save"}
+                        </button>
+                      </div>
+
+                      {canNoShow && (
+                        <button className="btn btn-danger" style={{ padding: "5px 12px", fontSize: 12 }} onClick={() => markNoShow(a.id)}>
+                          Mark no-show
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Exercise Library Quick Assignment Picker */}

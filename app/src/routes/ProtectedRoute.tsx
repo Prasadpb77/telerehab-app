@@ -14,6 +14,13 @@ export default function ProtectedRoute({
 
   if (loading) return <div style={{ padding: 40 }}>Loading…</div>;
   if (!profile) return <Navigate to="/login" replace />;
+
+  // Forced first-login password change for doctor-created accounts: block
+  // access to everything else until the password has been set.
+  if (profile.must_change_password) {
+    return <Navigate to="/set-password" replace />;
+  }
+
   if (profile.role !== role) {
     return <Navigate to={profile.role === "doctor" ? "/doctor" : "/patient"} replace />;
   }

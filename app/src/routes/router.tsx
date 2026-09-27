@@ -3,6 +3,7 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "./ProtectedRoute";
 import Login from "../pages/auth/Login";
 import Signup from "../pages/auth/Signup";
+import SetPassword from "../pages/auth/SetPassword";
 
 import Home from "../pages/public/Home";
 import PrivacyPolicy from "../pages/public/PrivacyPolicy";
@@ -22,6 +23,8 @@ import DoctorPatientList from "../pages/doctor/PatientList";
 import DoctorPatientProfile from "../pages/doctor/PatientProfile";
 import DoctorCalendar from "../pages/doctor/Calendar";
 import DoctorChatbot from "../pages/doctor/Chatbot";
+import DoctorExerciseLibrary from "../pages/doctor/ExerciseLibrary";
+import DoctorReminders from "../pages/doctor/Reminders";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Home /> },
@@ -30,6 +33,7 @@ export const router = createBrowserRouter([
   { path: "/data-request", element: <DataRequest /> },
   { path: "/login", element: <Login /> },
   { path: "/signup", element: <Signup /> },
+  { path: "/set-password", element: <SetPassword /> },
   {
     path: "/patient",
     element: (
@@ -59,6 +63,8 @@ export const router = createBrowserRouter([
       { path: "patients", element: <DoctorPatientList /> },
       { path: "patients/:patientId", element: <DoctorPatientProfile /> },
       { path: "calendar", element: <DoctorCalendar /> },
+      { path: "exercises", element: <DoctorExerciseLibrary /> },
+      { path: "reminders", element: <DoctorReminders /> },
       { path: "chatbot", element: <DoctorChatbot /> },
     ],
   },

@@ -324,6 +324,245 @@ appointments.post("/:id/cancel", requireRole("doctor"), async (c) => {
   return c.json({ appointment: updated, whatsapp_url });
 });
 
+/** Doctor marks a past scheduled appointment as a no-show. The time has
+ *  already passed, so the linked slot is deliberately NOT freed here — only
+ *  /cancel frees a slot (freeing a past slot would be meaningless). */
+appointments.post("/:id/no-show", requireRole("doctor"), async (c) => {
+  const id = c.req.param("id");
+  const supabase = await getSupabaseAdmin(c.env);
+
+  const { data: appt, error } = await supabase
+    .from("appointments")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (error || !appt) return c.json({ error: "Appointment not found" }, 404);
+  if (appt.status !== "scheduled") {
+    return c.json({ error: "Only scheduled appointments can be marked no-show" }, 400);
+  }
+
+  const { data: updated, error: updateErr } = await supabase
+    .from("appointments")
+    .update({ status: "no_show" })
+    .eq("id", id)
+    .select()
+    .single();
+  if (updateErr) return c.json({ error: updateErr.message }, 500);
+
+  return c.json({ appointment: updated });
+});
+
+/** Ad-hoc instant Meet: doctor starts a video call with a patient right now,
+ *  outside any pre-booked slot. Creates a scheduled appointment spanning the
+ *  next 30 minutes, then creates the Calendar event + Meet link (the same call
+ *  /accept uses) and returns the Meet URL to open. */
+appointments.post("/adhoc", requireRole("doctor"), async (c) => {
+  const doctor = c.get("user" as never) as AuthedUser;
+  const body = await c.req.json<{ patient_id?: string; duration_min?: number }>();
+  if (!body.patient_id) return c.json({ error: "patient_id is required" }, 400);
+
+  const supabase = await getSupabaseAdmin(c.env);
+
+  const { data: patientUser, error: patientErr } = await supabase
+    .from("users")
+    .select("id, email, full_name, phone, role")
+    .eq("id", body.patient_id)
+    .single();
+  if (patientErr || !patientUser || patientUser.role !== "patient") {
+    return c.json({ error: "Invalid patient_id" }, 400);
+  }
+
+  const durationMin = Number(body.duration_min) > 0 ? Number(body.duration_min) : 30;
+  const startsAt = new Date();
+  const endsAt = new Date(startsAt.getTime() + durationMin * 60000);
+
+  const { data: appt, error: insertErr } = await supabase
+    .from("appointments")
+    .insert({
+      doctor_id: doctor.id,
+      patient_id: body.patient_id,
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
+      status: "scheduled",
+      notes: "Ad-hoc instant TeleRehab call",
+    })
+    .select()
+    .single();
+  if (insertErr) {
+    if (insertErr.code === "23505") {
+      return c.json({ error: "An appointment already exists at this time" }, 409);
+    }
+    return c.json({ error: insertErr.message }, 500);
+  }
+
+  try {
+    const { googleEventId, meetUrl } = await createCalendarEventWithMeet(c.env, {
+      requestId: appt.id,
+      summary: `Neuro TeleRehab ad-hoc call — ${patientUser.full_name}`,
+      description: "Instant TeleRehab video call",
+      startIso: appt.starts_at,
+      endIso: appt.ends_at,
+      attendeeEmails: [patientUser.email, doctor.email],
+    });
+
+    const { data: updated, error: updateErr } = await supabase
+      .from("appointments")
+      .update({ google_event_id: googleEventId, google_meet_url: meetUrl })
+      .eq("id", appt.id)
+      .select()
+      .single();
+    if (updateErr) throw new Error(updateErr.message);
+
+    let whatsapp_url: string | null = null;
+    if (patientUser.phone) {
+      const message =
+        `Hi ${patientUser.full_name}, this is your Neuro TeleRehab clinic. ` +
+        `Dr. Neha is starting a video consultation now — join here: ${meetUrl}`;
+      whatsapp_url = buildWhatsAppLink(patientUser.phone, message);
+    }
+
+    return c.json({ appointment: updated, google_meet_url: meetUrl, whatsapp_url }, 201);
+  } catch (err: any) {
+    await supabase.from("appointments").delete().eq("id", appt.id);
+    return c.json({ error: `Failed to create Meet event: ${err.message}` }, 502);
+  }
+});
+
+/** Bulk / recurring scheduling: creates N independent appointment rows (each
+ *  with its own Calendar event + Meet link) in one action. Modelled as N rows
+ *  rather than one recurring event so cancelling/rescheduling one session never
+ *  affects the others, and each keeps its own session_notes row. All rows share
+ *  a generated `treatment_plan_id` used purely as a display label
+ *  ("Session 3 of 6"). Partial failures are reported per-session. */
+appointments.post("/bulk", requireRole("doctor"), async (c) => {
+  const doctor = c.get("user" as never) as AuthedUser;
+  const body = await c.req.json<{
+    patient_id?: string;
+    count?: number;
+    start_iso?: string;
+    pattern?: "weekly" | "twice_weekly" | "custom";
+    gap_days?: number;
+    duration_min?: number;
+    label?: string;
+  }>();
+
+  if (!body.patient_id || !body.start_iso || !body.count) {
+    return c.json({ error: "patient_id, start_iso, count are required" }, 400);
+  }
+  const count = Math.min(Math.max(1, Number(body.count)), 52);
+  const durationMin = Number(body.duration_min) > 0 ? Number(body.duration_min) : 30;
+  const pattern = body.pattern ?? "weekly";
+
+  let gapDays: number;
+  if (pattern === "weekly") gapDays = 7;
+  else if (pattern === "twice_weekly") gapDays = 3.5;
+  else gapDays = Number(body.gap_days) > 0 ? Number(body.gap_days) : 7;
+
+  const supabase = await getSupabaseAdmin(c.env);
+
+  const { data: patientUser, error: patientErr } = await supabase
+    .from("users")
+    .select("id, email, full_name, role")
+    .eq("id", body.patient_id)
+    .single();
+  if (patientErr || !patientUser || patientUser.role !== "patient") {
+    return c.json({ error: "Invalid patient_id" }, 400);
+  }
+
+  const treatmentPlanId = crypto.randomUUID();
+  const baseStart = new Date(body.start_iso);
+  if (Number.isNaN(baseStart.getTime())) return c.json({ error: "Invalid start_iso" }, 400);
+
+  const created: Array<{ id: string; starts_at: string; google_meet_url: string | null }> = [];
+  const failures: Array<{ index: number; error: string }> = [];
+
+  for (let i = 0; i < count; i++) {
+    const startsAt = new Date(baseStart.getTime() + i * gapDays * 24 * 60 * 60 * 1000);
+    const endsAt = new Date(startsAt.getTime() + durationMin * 60000);
+
+    const { data: appt, error: insertErr } = await supabase
+      .from("appointments")
+      .insert({
+        doctor_id: doctor.id,
+        patient_id: body.patient_id,
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+        status: "scheduled",
+        treatment_plan_id: treatmentPlanId,
+        notes: `${body.label ? body.label + " — " : ""}Session ${i + 1} of ${count}`,
+      })
+      .select()
+      .single();
+
+    if (insertErr || !appt) {
+      failures.push({ index: i + 1, error: insertErr?.message ?? "Insert failed" });
+      continue;
+    }
+
+    try {
+      const { googleEventId, meetUrl } = await createCalendarEventWithMeet(c.env, {
+        requestId: appt.id,
+        summary: `Neuro TeleRehab session — ${patientUser.full_name}`,
+        description: body.label ?? "",
+        startIso: appt.starts_at,
+        endIso: appt.ends_at,
+        attendeeEmails: [patientUser.email, doctor.email],
+      });
+      const { data: updated, error: updateErr } = await supabase
+        .from("appointments")
+        .update({ google_event_id: googleEventId, google_meet_url: meetUrl })
+        .eq("id", appt.id)
+        .select()
+        .single();
+      if (updateErr) throw new Error(updateErr.message);
+      created.push({ id: updated.id, starts_at: updated.starts_at, google_meet_url: updated.google_meet_url });
+    } catch (err: any) {
+      // Roll back only the failed row so the rest of the series stays intact.
+      await supabase.from("appointments").delete().eq("id", appt.id);
+      failures.push({ index: i + 1, error: `Meet creation failed: ${err.message}` });
+    }
+  }
+
+  return c.json(
+    {
+      treatment_plan_id: treatmentPlanId,
+      created_count: created.length,
+      requested_count: count,
+      created,
+      failures,
+    },
+    failures.length === 0 ? 201 : 207
+  );
+});
+
+/** Manual payment tracking: doctor records whether a session is paid and the
+ *  amount. No payment gateway — internal record-keeping only. */
+appointments.patch("/:id/payment", requireRole("doctor"), async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json<{ payment_status?: string; payment_amount?: number | null }>();
+  const status = body.payment_status;
+  if (status && !["unpaid", "paid", "waived"].includes(status)) {
+    return c.json({ error: "payment_status must be unpaid, paid, or waived" }, 400);
+  }
+
+  const supabase = await getSupabaseAdmin(c.env);
+  const { data: updated, error } = await supabase
+    .from("appointments")
+    .update({
+      payment_status: status ?? "unpaid",
+      payment_amount:
+        body.payment_amount === undefined || body.payment_amount === null
+          ? null
+          : Number(body.payment_amount),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) return c.json({ error: error.message }, 500);
+
+  return c.json({ appointment: updated });
+});
+
 /** List appointments — patient sees own, doctor sees all (RLS would also
  *  enforce this if called with a user JWT; here the Worker filters explicitly
  *  since it uses the service-role client). */

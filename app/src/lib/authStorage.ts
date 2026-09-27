@@ -11,6 +11,7 @@ const USER_KEY = "tr_user";
 
 export interface AuthUser extends AppUser {
   role: "doctor" | "patient";
+  must_change_password?: boolean;
 }
 
 export function getToken(): string | null {

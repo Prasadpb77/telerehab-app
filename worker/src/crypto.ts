@@ -59,6 +59,19 @@ export async function hashPassword(password: string): Promise<string> {
   return `pbkdf2$${PBKDF2_ITERATIONS}$${toBase64(salt)}$${toBase64(hash)}`;
 }
 
+/**
+ * Generate a readable temporary password for doctor-created patient accounts,
+ * e.g. "Rehab-7K2Q". Returned to the doctor exactly once and never stored in
+ * plaintext - only its PBKDF2 hash is persisted.
+ */
+export function generateTempPassword(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous 0/O/1/I
+  const bytes = crypto.getRandomValues(new Uint8Array(4));
+  let suffix = "";
+  for (const b of bytes) suffix += alphabet[b % alphabet.length];
+  return `Rehab-${suffix}`;
+}
+
 /** Constant-time-ish verification of a plaintext password against a stored hash. */
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   if (!stored) return false;

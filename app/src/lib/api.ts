@@ -37,6 +37,19 @@ export const api = {
     login: (email: string, password: string) =>
       publicFetch("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
     me: () => authedFetch("/api/auth/me"),
+    changePassword: (newPassword: string) =>
+      authedFetch("/api/auth/change-password", { method: "POST", body: JSON.stringify({ new_password: newPassword }) }),
+  },
+  doctor: {
+    createPatient: (payload: { full_name: string; email: string; phone?: string }) =>
+      authedFetch("/api/doctor/patients", { method: "POST", body: JSON.stringify(payload) }),
+    regeneratePassword: (patientId: string) =>
+      authedFetch(`/api/doctor/patients/${patientId}/regenerate-password`, { method: "POST" }),
+    reminders: () => authedFetch("/api/doctor/reminders"),
+    markReminderSent: (id: string) =>
+      authedFetch(`/api/doctor/reminders/${id}/mark-sent`, { method: "POST" }),
+    buildReminderLink: (id: string) =>
+      authedFetch(`/api/doctor/reminders/${id}/whatsapp-link`, { method: "POST" }),
   },
   dataRequest: {
     submit: (payload: { patient_id?: string; contact_email: string; request_type: string; details?: string }) =>
@@ -52,6 +65,23 @@ export const api = {
     reschedule: (id: string, newSlotId: string) =>
       authedFetch(`/api/appointments/${id}/reschedule`, { method: "POST", body: JSON.stringify({ new_slot_id: newSlotId }) }),
     cancel: (id: string) => authedFetch(`/api/appointments/${id}/cancel`, { method: "POST" }),
+    noShow: (id: string) => authedFetch(`/api/appointments/${id}/no-show`, { method: "POST" }),
+    adhoc: (patientId: string, durationMin = 30) =>
+      authedFetch("/api/appointments/adhoc", {
+        method: "POST",
+        body: JSON.stringify({ patient_id: patientId, duration_min: durationMin }),
+      }),
+    bulkCreate: (payload: {
+      patient_id: string;
+      count: number;
+      start_iso: string;
+      pattern: "weekly" | "twice_weekly" | "custom";
+      gap_days?: number;
+      duration_min?: number;
+      label?: string;
+    }) => authedFetch("/api/appointments/bulk", { method: "POST", body: JSON.stringify(payload) }),
+    setPayment: (id: string, payload: { payment_status: string; payment_amount?: number | null }) =>
+      authedFetch(`/api/appointments/${id}/payment`, { method: "PATCH", body: JSON.stringify(payload) }),
   },
   meetTranscript: {
     submit: (payload: { session_id: string; raw_text: string; source?: string }) =>
