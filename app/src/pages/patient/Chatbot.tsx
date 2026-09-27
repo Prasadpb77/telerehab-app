@@ -164,22 +164,25 @@ export default function PatientChatbot() {
           {/* Input Bar */}
           <div
             style={{
-              padding: "16px 20px",
+              padding: "clamp(12px, 3vw, 16px) clamp(14px, 3vw, 20px)",
               background: "var(--color-surface)",
               borderTop: "1px solid var(--color-border)",
               display: "flex",
               gap: 10,
               alignItems: "center",
+              flexWrap: "wrap",
             }}
           >
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder="e.g. What exercises am I doing this week? Or how many reps?"
+              placeholder="e.g. What exercises am I doing this week?"
               style={{
                 borderRadius: "var(--radius-pill)",
-                padding: "12px 20px",
+                padding: "10px 18px",
+                flex: "1 1 200px",
+                minWidth: 0,
               }}
             />
             <button
@@ -188,11 +191,12 @@ export default function PatientChatbot() {
               disabled={sending || !input.trim()}
               style={{
                 borderRadius: "var(--radius-pill)",
-                padding: "10px 22px",
+                padding: "10px 20px",
                 whiteSpace: "nowrap",
+                flexShrink: 0,
               }}
             >
-              {sending ? "Sending…" : "Ask"}
+              {sending ? "…" : "Ask"}
             </button>
           </div>
         </div>

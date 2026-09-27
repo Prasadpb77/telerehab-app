@@ -111,15 +111,16 @@ export default function PatientExercises() {
             <div
               className="card"
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr auto",
-                alignItems: "center",
-                gap: 20,
-                padding: "24px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                gap: 16,
+                padding: "clamp(16px, 3vw, 24px)",
                 borderLeft: "4px solid var(--color-brand-teal)",
               }}
             >
-              <div>
+              <div style={{ flex: "1 1 280px", minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                   <h3 style={{ fontSize: 18, margin: 0, color: "var(--color-ink)" }}>
                     {pe.exercises?.title}
@@ -162,7 +163,7 @@ export default function PatientExercises() {
                 </div>
               </div>
 
-              <div>
+              <div style={{ flexShrink: 0, alignSelf: "flex-start" }}>
                 <button
                   className="btn btn-primary"
                   onClick={() => logCompletion(pe.id)}
@@ -170,6 +171,7 @@ export default function PatientExercises() {
                   style={{
                     padding: "10px 18px",
                     whiteSpace: "nowrap",
+                    width: "100%",
                   }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

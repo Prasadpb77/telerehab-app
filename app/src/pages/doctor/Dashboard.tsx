@@ -121,8 +121,8 @@ export default function DoctorDashboard() {
             </p>
           </div>
 
-          <div style={{ display: "flex", gap: 10 }}>
-            <Link to="/doctor/calendar" className="btn btn-outline">
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", width: "100%", maxWidth: 320 }}>
+            <Link to="/doctor/calendar" className="btn btn-outline" style={{ width: "100%", justifyContent: "center" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                 <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -140,7 +140,7 @@ export default function DoctorDashboard() {
         )}
 
         {/* Clinical Metric Tiles */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 32 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 16, marginBottom: 32 }}>
           <div className="card" style={{ padding: "18px 20px" }}>
             <div style={{ fontSize: 13, color: "var(--color-ink-muted)", marginBottom: 4 }}>Pending Action Requests</div>
             <div style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 600, color: pending.length > 0 ? "var(--color-brand-accent)" : "var(--color-ink)" }}>
@@ -220,12 +220,12 @@ export default function DoctorDashboard() {
                       )}
                     </div>
 
-                    <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                       <button
                         className="btn btn-primary"
                         disabled={busyId === a.id}
                         onClick={() => handleAccept(a.id)}
-                        style={{ padding: "9px 16px" }}
+                        style={{ padding: "9px 16px", flex: "1 1 auto" }}
                       >
                         {busyId === a.id ? "Processing…" : "Accept + Create Meet"}
                       </button>
@@ -233,7 +233,7 @@ export default function DoctorDashboard() {
                         className="btn btn-danger"
                         disabled={busyId === a.id}
                         onClick={() => handleCancel(a.id)}
-                        style={{ padding: "9px 16px" }}
+                        style={{ padding: "9px 16px", flex: "1 1 auto" }}
                       >
                         Decline
                       </button>

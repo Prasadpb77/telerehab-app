@@ -119,7 +119,7 @@ export default function DoctorCalendar() {
       </ScrollReveal>
 
       {/* Two Column Forms */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))", gap: 24, marginBottom: 36 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 24, marginBottom: 36 }}>
         {/* Form 1: Open Slot for Self-Booking */}
         <ScrollReveal from="up" delay={50}>
           <div className="card" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -132,7 +132,7 @@ export default function DoctorCalendar() {
             </p>
 
             <form onSubmit={handleCreateSlot} style={{ display: "grid", gap: 14 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
                 <div>
                   <label>Date</label>
                   <input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} required />
@@ -236,7 +236,7 @@ export default function DoctorCalendar() {
                 </select>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
                 <div>
                   <label>Date</label>
                   <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />

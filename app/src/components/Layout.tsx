@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import ScrollProgressBar from "./ScrollProgressBar";
@@ -138,42 +139,141 @@ const doctorLinks = [
 export default function Layout() {
   const { profile, signOut } = useAuth();
   const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
   const isDoctor = profile?.role === "doctor";
   const links = isDoctor ? doctorLinks : patientLinks;
+
+  // Auto-close mobile drawer whenever location changes
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
 
   return (
     <div className="app-shell">
       <ScrollProgressBar />
-      
-      {/* Sidebar Navigation */}
-      <aside className="app-nav">
-        {/* Brand Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
+
+      {/* Mobile Top App Bar */}
+      <header className="mobile-app-bar">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
             style={{
-              width: 38,
-              height: 38,
-              borderRadius: "var(--radius-sm)",
+              width: 32,
+              height: 32,
+              borderRadius: "var(--radius-xs)",
               background: "linear-gradient(135deg, var(--color-brand-primary), var(--color-brand-teal))",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: "#FFF",
-              boxShadow: "0 2px 8px rgba(29, 83, 74, 0.25)",
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
             </svg>
           </div>
-          <div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, color: "var(--color-ink)", lineHeight: 1.2 }}>
-              Neuro TeleRehab
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 16, color: "var(--color-ink)" }}>
+            Neuro TeleRehab
+          </span>
+        </div>
+
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
+          style={{
+            padding: "8px 12px",
+            background: "var(--color-surface-subtle)",
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--radius-xs)",
+            color: "var(--color-ink)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {mobileOpen ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          )}
+        </button>
+      </header>
+
+      {/* Mobile Drawer Backdrop Overlay */}
+      <div
+        className={`mobile-drawer-overlay ${mobileOpen ? "open" : ""}`}
+        onClick={() => setMobileOpen(false)}
+      />
+
+      {/* Sidebar Navigation */}
+      <aside className={`app-nav ${mobileOpen ? "open" : ""}`}>
+        {/* Brand Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: "var(--radius-sm)",
+                background: "linear-gradient(135deg, var(--color-brand-primary), var(--color-brand-teal))",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#FFF",
+                boxShadow: "0 2px 8px rgba(29, 83, 74, 0.25)",
+                flexShrink: 0,
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+              </svg>
             </div>
-            <div style={{ fontSize: 11, color: "var(--color-ink-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, marginTop: 2 }}>
-              {isDoctor ? "Clinical Workspace" : "Patient Portal"}
+            <div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, color: "var(--color-ink)", lineHeight: 1.2 }}>
+                Neuro TeleRehab
+              </div>
+              <div style={{ fontSize: 11, color: "var(--color-ink-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, marginTop: 2 }}>
+                {isDoctor ? "Clinical Workspace" : "Patient Portal"}
+              </div>
             </div>
           </div>
+
+          {/* Close button in mobile drawer */}
+          <button
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close navigation"
+            style={{
+              display: mobileOpen ? "block" : "none",
+              background: "transparent",
+              color: "var(--color-ink-muted)",
+              padding: "4px",
+              cursor: "pointer",
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
 
         {/* Navigation Section */}
@@ -186,6 +286,7 @@ export default function Layout() {
               key={l.to}
               to={l.to}
               end={l.end}
+              onClick={() => setMobileOpen(false)}
               style={({ isActive }) => ({
                 display: "flex",
                 alignItems: "center",
@@ -237,11 +338,12 @@ export default function Layout() {
                   justifyContent: "center",
                   fontWeight: 600,
                   fontSize: 13,
+                  flexShrink: 0,
                 }}
               >
                 {profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : "U"}
               </div>
-              <div style={{ overflow: "hidden" }}>
+              <div style={{ overflow: "hidden", minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-ink)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
                   {profile?.full_name ?? "User"}
                 </div>
@@ -266,11 +368,11 @@ export default function Layout() {
           </div>
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 12px", fontSize: 11, color: "var(--color-ink-faint)", paddingLeft: 4 }}>
-            <Link to="/privacy-policy" style={{ color: "var(--color-ink-muted)" }}>Privacy</Link>
+            <Link to="/privacy-policy" style={{ color: "var(--color-ink-muted)" }} onClick={() => setMobileOpen(false)}>Privacy</Link>
             <span>·</span>
-            <Link to="/terms" style={{ color: "var(--color-ink-muted)" }}>Terms</Link>
+            <Link to="/terms" style={{ color: "var(--color-ink-muted)" }} onClick={() => setMobileOpen(false)}>Terms</Link>
             <span>·</span>
-            <Link to="/data-request" style={{ color: "var(--color-ink-muted)" }}>Data rights</Link>
+            <Link to="/data-request" style={{ color: "var(--color-ink-muted)" }} onClick={() => setMobileOpen(false)}>Data rights</Link>
           </div>
         </div>
       </aside>

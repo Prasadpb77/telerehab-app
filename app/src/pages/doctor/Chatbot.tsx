@@ -192,12 +192,13 @@ export default function DoctorChatbot() {
           {/* Input Bar */}
           <div
             style={{
-              padding: "16px 20px",
+              padding: "clamp(12px, 3vw, 16px) clamp(14px, 3vw, 20px)",
               background: "var(--color-surface)",
               borderTop: "1px solid var(--color-border)",
               display: "flex",
               gap: 10,
               alignItems: "center",
+              flexWrap: "wrap",
             }}
           >
             <input
@@ -207,12 +208,14 @@ export default function DoctorChatbot() {
               onKeyDown={(e) => e.key === "Enter" && send()}
               placeholder={
                 patientId
-                  ? `Ask about ${selectedPatient?.full_name}'s history (e.g. Summarize their last 2 sessions)`
+                  ? `Ask about ${selectedPatient?.full_name}'s history…`
                   : "Select a patient above first"
               }
               style={{
                 borderRadius: "var(--radius-pill)",
-                padding: "12px 20px",
+                padding: "10px 18px",
+                flex: "1 1 200px",
+                minWidth: 0,
               }}
             />
             <button
@@ -221,8 +224,9 @@ export default function DoctorChatbot() {
               disabled={sending || !patientId || !input.trim()}
               style={{
                 borderRadius: "var(--radius-pill)",
-                padding: "10px 22px",
+                padding: "10px 20px",
                 whiteSpace: "nowrap",
+                flexShrink: 0,
               }}
             >
               {sending ? "…" : "Ask AI"}

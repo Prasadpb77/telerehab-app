@@ -1,6 +1,7 @@
 /* ==========================================================================
-   NEURO TELERELAB DESIGN SYSTEM — Premium Next-Generation Medical Technology
+   NEURO TELEREHAB DESIGN SYSTEM — Premium Next-Generation Medical Technology
    Palette: Deep Clinical Teal, Serene Sage, Frosted Glass, Warm Terracotta
+   Fully Responsive (320px Mobile -> Tablet -> Desktop 1440px+)
    ========================================================================== */
 
 :root {
@@ -19,7 +20,7 @@
                     radial-gradient(at 90% 85%, rgba(212, 115, 58, 0.06) 0px, transparent 50%),
                     radial-gradient(at 50% 50%, rgba(244, 246, 245, 0.8) 0px, transparent 100%);
   --color-surface: #FFFFFF;
-  --color-surface-glass: rgba(255, 255, 255, 0.82);
+  --color-surface-glass: rgba(255, 255, 255, 0.85);
   --color-surface-elevated: #FFFFFF;
   --color-surface-subtle: #F3F5F4;
   
@@ -68,11 +69,10 @@
   --transition-fast: 0.15s ease;
   --transition-base: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   --transition-smooth: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
 
-/* Dark mode anticipation / High contrast */
-@media (prefers-color-scheme: dark) {
-  /* System respects light clinic palette by default, but stays balanced */
+  /* Layout Spacing */
+  --header-height-mobile: 60px;
+  --nav-width-desktop: 260px;
 }
 
 /* Base reset & typography */
@@ -84,11 +84,15 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
+  width: 100%;
   min-height: 100vh;
+  overflow-x: hidden;
   background-color: var(--color-bg);
   background-image: var(--color-bg-mesh);
   background-attachment: fixed;
@@ -102,6 +106,8 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -111,10 +117,12 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.015em;
   line-height: 1.25;
   margin: 0 0 0.5rem 0;
+  word-break: break-word;
 }
 
 p {
   margin: 0 0 1rem 0;
+  word-break: break-word;
 }
 
 p:last-child {
@@ -129,6 +137,12 @@ a {
 
 a:hover {
   color: var(--color-brand-primary);
+}
+
+img, svg, video {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 
 /* Glassmorphism Surface Classes */
@@ -147,6 +161,8 @@ a:hover {
   box-shadow: var(--shadow-sm);
   padding: 24px;
   transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .card:hover {
@@ -164,7 +180,7 @@ a:hover {
   border-color: var(--color-brand-teal-light);
 }
 
-/* Buttons with refined micro-interactions */
+/* Buttons with refined micro-interactions and touch targets */
 button {
   font-family: var(--font-body);
   border: none;
@@ -177,6 +193,7 @@ button {
   justify-content: center;
   gap: 8px;
   padding: 10px 18px;
+  min-height: 42px;
   border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 500;
@@ -186,6 +203,9 @@ button {
   transition: all var(--transition-base);
   text-decoration: none;
   user-select: none;
+  touch-action: manipulation;
+  text-align: center;
+  white-space: normal;
 }
 
 .btn-primary {
@@ -253,12 +273,19 @@ input, textarea, select {
   font-family: var(--font-body);
   font-size: 14px;
   padding: 10px 14px;
+  min-height: 42px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-ink);
   width: 100%;
+  max-width: 100%;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+textarea {
+  min-height: 80px;
+  resize: vertical;
 }
 
 input:focus, textarea:focus, select:focus {
@@ -288,6 +315,8 @@ label {
   color: var(--color-ink-secondary);
   border: 1px solid var(--color-border-subtle);
   letter-spacing: 0.01em;
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 .badge-scheduled, .badge-active, .badge-approved {
@@ -314,6 +343,7 @@ label {
   border-radius: 50%;
   display: inline-block;
   background-color: currentColor;
+  flex-shrink: 0;
 }
 
 /* Pulse animation for active telehealth / join state */
@@ -330,8 +360,9 @@ label {
 /* App Shell Layout */
 .app-shell {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: var(--nav-width-desktop) 1fr;
   min-height: 100vh;
+  width: 100%;
 }
 
 .app-nav {
@@ -344,46 +375,184 @@ label {
   padding: 28px 20px;
   display: flex;
   flex-direction: column;
+  z-index: 90;
 }
 
 .main-content {
   padding: 36px 48px;
   max-width: 1200px;
   width: 100%;
+  min-width: 0; /* Prevents flex/grid blowouts */
 }
 
-@media (max-width: 900px) {
-  .app-shell {
-    grid-template-columns: 1fr;
-  }
-  .app-nav {
-    position: relative;
-    height: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--color-border);
-  }
-  .main-content {
-    padding: 24px 20px;
-  }
+/* Mobile App Bar Header for Layout */
+.mobile-app-bar {
+  display: none;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-border);
+  padding: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Mobile Nav Drawer Overlay */
+.mobile-drawer-overlay {
+  display: none;
 }
 
 /* Container */
 .container {
-  max-width: 1140px;
+  max-width: 1160px;
+  width: 100%;
   margin: 0 auto;
   padding: 0 24px;
 }
 
-/* Shimmer background animation for badges / accents */
-@keyframes subtleShimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+/* Responsive Grid Utilities */
+.grid-2-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
 }
 
-.shimmer {
-  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
-  background-size: 200% 100%;
-  animation: subtleShimmer 3.5s infinite;
+.grid-3-col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.grid-4-col {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+/* ==========================================================================
+   BREAKPOINTS: Tablet (768px - 1023px)
+   ========================================================================== */
+@media (max-width: 1023px) {
+  .app-shell {
+    grid-template-columns: 220px 1fr;
+  }
+  
+  .main-content {
+    padding: 28px 32px;
+  }
+
+  .grid-4-col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINTS: Mobile & Tablet Small (< 768px)
+   ========================================================================== */
+@media (max-width: 767px) {
+  .app-shell {
+    display: block;
+    width: 100%;
+  }
+
+  .mobile-app-bar {
+    display: flex;
+  }
+
+  /* Slide-in sidebar drawer on mobile */
+  .app-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(300px, 84vw);
+    height: 100vh;
+    z-index: 200;
+    box-shadow: var(--shadow-lg);
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    background: var(--color-surface);
+  }
+
+  .app-nav.open {
+    transform: translateX(0);
+  }
+
+  .mobile-drawer-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 26, 28, 0.4);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 190;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+  }
+
+  .mobile-drawer-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .main-content {
+    padding: 20px 16px;
+    width: 100%;
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+
+  .card {
+    padding: 18px 16px;
+  }
+
+  .grid-2-col, .grid-3-col, .grid-4-col {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .btn {
+    min-height: 44px; /* Optimal touch target */
+  }
+
+  /* Fluid typography */
+  h1 {
+    font-size: clamp(22px, 7vw, 28px) !important;
+  }
+  h2 {
+    font-size: clamp(19px, 5.5vw, 23px) !important;
+  }
+  h3 {
+    font-size: clamp(16px, 4.5vw, 19px) !important;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINTS: Small Mobile (< 400px - e.g. iPhone SE / 320px)
+   ========================================================================== */
+@media (max-width: 399px) {
+  .main-content {
+    padding: 16px 12px;
+  }
+
+  .container {
+    padding: 0 12px;
+  }
+
+  .card {
+    padding: 16px 12px;
+  }
+
+  .btn {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
 }
 
 /* Respect user accessibility settings */

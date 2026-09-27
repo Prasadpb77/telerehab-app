@@ -57,7 +57,7 @@ export default function PatientDashboard() {
       </ScrollReveal>
 
       {/* Main Focus Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 24, marginTop: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 24, marginTop: 8 }}>
         {/* Next Appointment Card */}
         <ScrollReveal from="up" delay={80}>
           <div

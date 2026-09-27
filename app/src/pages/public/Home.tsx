@@ -67,18 +67,23 @@ const WORKFLOW_STEPS = [
 
 export default function Home() {
   const [heroOffset, setHeroOffset] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     function onScroll() {
-      // Subtle parallax for the portrait container
-      setHeroOffset(window.scrollY * 0.08);
+      // Subtle parallax on larger displays only
+      if (window.innerWidth > 768) {
+        setHeroOffset(window.scrollY * 0.08);
+      } else {
+        setHeroOffset(0);
+      }
     }
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
-    <div style={{ position: "relative", overflowX: "hidden" }}>
+    <div style={{ position: "relative", width: "100%", overflowX: "hidden" }}>
       <ScrollProgressBar />
 
       {/* Top Navigation */}
@@ -87,7 +92,7 @@ export default function Home() {
           position: "sticky",
           top: 0,
           zIndex: 100,
-          background: "rgba(248, 249, 250, 0.85)",
+          background: "rgba(248, 249, 250, 0.92)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
           borderBottom: "1px solid var(--color-border)",
@@ -100,14 +105,14 @@ export default function Home() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            padding: "16px 24px",
+            padding: "14px 20px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div
               style={{
-                width: 36,
-                height: 36,
+                width: 34,
+                height: 34,
                 borderRadius: "var(--radius-sm)",
                 background: "linear-gradient(135deg, var(--color-brand-primary), var(--color-brand-teal))",
                 display: "flex",
@@ -115,44 +120,137 @@ export default function Home() {
                 justifyContent: "center",
                 color: "#FFF",
                 boxShadow: "0 2px 8px rgba(29, 83, 74, 0.25)",
+                flexShrink: 0,
               }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
               </svg>
             </div>
             <span
               style={{
                 fontFamily: "var(--font-display)",
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: 600,
                 letterSpacing: "-0.01em",
                 color: "var(--color-ink)",
+                whiteSpace: "nowrap",
               }}
             >
               Neuro TeleRehab
             </span>
           </div>
 
-          <nav style={{ display: "flex", gap: 24, alignItems: "center", fontSize: 14 }}>
+          {/* Desktop Nav */}
+          <nav
+            style={{
+              display: "flex",
+              gap: 20,
+              alignItems: "center",
+              fontSize: 14,
+            }}
+            className="home-desktop-nav"
+          >
             <a href="#specialties" style={{ color: "var(--color-ink-muted)", fontWeight: 500 }}>Specialties</a>
             <a href="#how-it-works" style={{ color: "var(--color-ink-muted)", fontWeight: 500 }}>How It Works</a>
             <a href="#about" style={{ color: "var(--color-ink-muted)", fontWeight: 500 }}>About</a>
             <div style={{ height: 16, width: 1, background: "var(--color-border)" }} />
             <Link to="/login" style={{ color: "var(--color-ink)", fontWeight: 500 }}>Log in</Link>
-            <Link to="/signup" className="btn btn-primary" style={{ padding: "8px 18px" }}>
+            <Link to="/signup" className="btn btn-primary" style={{ padding: "8px 16px" }}>
               Get Started
             </Link>
           </nav>
+
+          {/* Mobile Hamburger Toggle */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="home-mobile-toggle"
+            aria-label="Toggle navigation menu"
+            style={{
+              display: "none",
+              padding: "8px",
+              background: "var(--color-surface)",
+              border: "1px solid var(--color-border)",
+              borderRadius: "var(--radius-xs)",
+              color: "var(--color-ink)",
+              cursor: "pointer",
+            }}
+          >
+            {mobileMenuOpen ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            )}
+          </button>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div
+            style={{
+              padding: "16px 20px 20px",
+              background: "var(--color-surface)",
+              borderTop: "1px solid var(--color-border-subtle)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+            }}
+          >
+            <a
+              href="#specialties"
+              onClick={() => setMobileMenuOpen(false)}
+              style={{ padding: "8px 0", color: "var(--color-ink)", fontWeight: 500 }}
+            >
+              Specialties
+            </a>
+            <a
+              href="#how-it-works"
+              onClick={() => setMobileMenuOpen(false)}
+              style={{ padding: "8px 0", color: "var(--color-ink)", fontWeight: 500 }}
+            >
+              How It Works
+            </a>
+            <a
+              href="#about"
+              onClick={() => setMobileMenuOpen(false)}
+              style={{ padding: "8px 0", color: "var(--color-ink)", fontWeight: 500 }}
+            >
+              About Dr. Neha
+            </a>
+            <div style={{ height: 1, background: "var(--color-border-subtle)", margin: "4px 0" }} />
+            <Link
+              to="/login"
+              onClick={() => setMobileMenuOpen(false)}
+              className="btn btn-outline"
+              style={{ justifyContent: "center", width: "100%" }}
+            >
+              Log in to Portal
+            </Link>
+            <Link
+              to="/signup"
+              onClick={() => setMobileMenuOpen(false)}
+              className="btn btn-primary"
+              style={{ justifyContent: "center", width: "100%" }}
+            >
+              Get Started / Sign Up
+            </Link>
+          </div>
+        )}
       </header>
 
       {/* Hero Section */}
       <section
         style={{
           position: "relative",
-          paddingTop: "64px",
-          paddingBottom: "80px",
+          paddingTop: "clamp(32px, 6vw, 64px)",
+          paddingBottom: "clamp(40px, 8vw, 80px)",
           background: "radial-gradient(ellipse at 80% 20%, rgba(47, 133, 118, 0.12) 0%, transparent 60%)",
         }}
       >
@@ -160,10 +258,9 @@ export default function Home() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1.2fr 1fr",
-              gap: 56,
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))",
+              gap: "clamp(28px, 5vw, 56px)",
               alignItems: "center",
-              minHeight: "68vh",
             }}
           >
             {/* Left Content */}
@@ -171,13 +268,16 @@ export default function Home() {
               <div
                 className="badge"
                 style={{
-                  marginBottom: 20,
-                  padding: "6px 14px",
+                  marginBottom: 16,
+                  padding: "6px 12px",
                   background: "var(--color-brand-teal-glaze)",
                   color: "var(--color-brand-teal)",
                   borderColor: "rgba(36, 107, 95, 0.2)",
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: 600,
+                  whiteSpace: "normal",
+                  textAlign: "left",
+                  lineHeight: 1.4,
                 }}
               >
                 <span className="badge-dot" style={{ background: "var(--color-brand-emerald)" }} />
@@ -186,10 +286,10 @@ export default function Home() {
 
               <h1
                 style={{
-                  fontSize: "clamp(34px, 4.2vw, 56px)",
-                  lineHeight: 1.12,
-                  marginTop: 8,
-                  marginBottom: 20,
+                  fontSize: "clamp(28px, 4.2vw, 52px)",
+                  lineHeight: 1.15,
+                  marginTop: 6,
+                  marginBottom: 16,
                   fontWeight: 600,
                   color: "var(--color-ink)",
                 }}
@@ -199,11 +299,11 @@ export default function Home() {
 
               <p
                 style={{
-                  fontSize: "clamp(16px, 1.2vw, 18px)",
+                  fontSize: "clamp(15px, 1.2vw, 17px)",
                   lineHeight: 1.6,
                   color: "var(--color-ink-secondary)",
                   maxWidth: 540,
-                  marginBottom: 32,
+                  marginBottom: 28,
                 }}
               >
                 Dr. Neha Dhanokar brings orthopaedic, neuro, geriatric, post-operative, and
@@ -211,15 +311,17 @@ export default function Home() {
                 telehealth follow-ups, structured daily therapy regimens, and continuous progress metrics.
               </p>
 
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                 <Link
                   to="/signup"
                   className="btn btn-primary"
                   style={{
-                    padding: "14px 28px",
+                    padding: "12px 24px",
                     fontSize: 15,
                     borderRadius: "var(--radius-sm)",
                     fontWeight: 600,
+                    flex: "1 1 auto",
+                    minWidth: "min(100%, 200px)",
                   }}
                 >
                   Book Initial Session
@@ -232,13 +334,15 @@ export default function Home() {
                   to="/login"
                   className="btn btn-outline"
                   style={{
-                    padding: "14px 24px",
+                    padding: "12px 20px",
                     fontSize: 15,
                     borderRadius: "var(--radius-sm)",
                     fontWeight: 500,
+                    flex: "1 1 auto",
+                    minWidth: "min(100%, 180px)",
                   }}
                 >
-                  Patient & Clinician Portal
+                  Portal Login
                 </Link>
               </div>
 
@@ -246,22 +350,23 @@ export default function Home() {
               <div
                 style={{
                   display: "flex",
-                  gap: 24,
-                  marginTop: 40,
-                  paddingTop: 24,
+                  flexWrap: "wrap",
+                  gap: "12px 20px",
+                  marginTop: 32,
+                  paddingTop: 20,
                   borderTop: "1px solid var(--color-border-subtle)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-brand-emerald)" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-brand-emerald)", flexShrink: 0 }} />
                   <span style={{ fontSize: 13, color: "var(--color-ink-muted)", fontWeight: 500 }}>Google Meet TeleRehab</span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-brand-teal)" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-brand-teal)", flexShrink: 0 }} />
                   <span style={{ fontSize: 13, color: "var(--color-ink-muted)", fontWeight: 500 }}>Doorstep Home Visits</span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-brand-accent)" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-brand-accent)", flexShrink: 0 }} />
                   <span style={{ fontSize: 13, color: "var(--color-ink-muted)", fontWeight: 500 }}>DPDP Act 2023 Compliant</span>
                 </div>
               </div>
@@ -273,12 +378,15 @@ export default function Home() {
                 style={{
                   position: "relative",
                   borderRadius: "var(--radius-lg)",
-                  padding: 12,
+                  padding: "clamp(8px, 2vw, 12px)",
                   background: "linear-gradient(145deg, rgba(255,255,255,0.9), rgba(240,244,243,0.7))",
                   border: "1px solid rgba(255, 255, 255, 0.8)",
                   boxShadow: "0 24px 48px -12px rgba(29, 83, 74, 0.16)",
                   transform: `translateY(${heroOffset}px)`,
                   transition: "transform 0.1s ease-out",
+                  maxWidth: 460,
+                  margin: "0 auto",
+                  width: "100%",
                 }}
               >
                 <div
@@ -287,6 +395,7 @@ export default function Home() {
                     overflow: "hidden",
                     aspectRatio: "4/5",
                     position: "relative",
+                    maxHeight: "520px",
                   }}
                 >
                   <img
@@ -307,15 +416,15 @@ export default function Home() {
                       bottom: 0,
                       left: 0,
                       right: 0,
-                      height: "40%",
-                      background: "linear-gradient(to top, rgba(17, 26, 28, 0.75) 0%, transparent 100%)",
+                      height: "45%",
+                      background: "linear-gradient(to top, rgba(17, 26, 28, 0.8) 0%, transparent 100%)",
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "flex-end",
-                      padding: "24px",
+                      padding: "clamp(14px, 4vw, 24px)",
                     }}
                   >
-                    <div style={{ color: "#FFF", fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600 }}>
+                    <div style={{ color: "#FFF", fontFamily: "var(--font-display)", fontSize: "clamp(17px, 3.5vw, 20px)", fontWeight: 600 }}>
                       Dr. Neha Dhanokar
                     </div>
                     <div style={{ color: "rgba(255, 255, 255, 0.85)", fontSize: 13, marginTop: 2 }}>
@@ -328,20 +437,20 @@ export default function Home() {
                 <div
                   style={{
                     position: "absolute",
-                    top: -16,
-                    right: 28,
+                    top: -12,
+                    right: 20,
                     background: "var(--color-surface)",
-                    padding: "8px 16px",
+                    padding: "6px 14px",
                     borderRadius: "var(--radius-pill)",
                     boxShadow: "var(--shadow-md)",
                     border: "1px solid var(--color-border)",
                     display: "flex",
                     alignItems: "center",
-                    gap: 8,
+                    gap: 6,
                   }}
                 >
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-brand-emerald)" }} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-ink)" }}>Active Practice</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-ink)" }}>Active Practice</span>
                 </div>
               </div>
             </ScrollReveal>
@@ -350,46 +459,45 @@ export default function Home() {
       </section>
 
       {/* Clinical Metrics & Credibility Strip */}
-      <section style={{ padding: "16px 0 64px" }}>
+      <section style={{ padding: "16px 0 48px" }}>
         <div className="container">
           <ScrollReveal from="up">
             <div
               className="card glass-panel"
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                padding: "32px 24px",
-                gap: 24,
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))",
+                padding: "clamp(20px, 4vw, 32px) clamp(16px, 3vw, 24px)",
+                gap: "clamp(16px, 3vw, 24px)",
                 borderRadius: "var(--radius-md)",
                 textAlign: "center",
               }}
             >
               {[
-                { val: "2+", label: "Years Clinical Experience", sub: "Evidence-based practice" },
+                { val: "2+", label: "Years Experience", sub: "Evidence-based practice" },
                 { val: "15", label: "South Mumbai Localities", sub: "Direct home service" },
                 { val: "6", label: "Specialty Disciplines", sub: "From neuro to post-op" },
-                { val: "7", label: "Days Clinical Coverage", sub: "Consistent recovery momentum" },
-              ].map((stat, i) => (
+                { val: "7", label: "Days Coverage", sub: "Continuous recovery" },
+              ].map((stat) => (
                 <div
                   key={stat.label}
                   style={{
-                    borderRight: i < 3 ? "1px solid var(--color-border-subtle)" : "none",
-                    padding: "0 12px",
+                    padding: "8px 10px",
                   }}
                 >
                   <div
                     style={{
                       fontFamily: "var(--font-display)",
-                      fontSize: "clamp(32px, 3.5vw, 42px)",
+                      fontSize: "clamp(28px, 4.5vw, 38px)",
                       fontWeight: 600,
                       color: "var(--color-brand-teal)",
                       lineHeight: 1.1,
-                      marginBottom: 6,
+                      marginBottom: 4,
                     }}
                   >
                     {stat.val}
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-ink)", marginBottom: 2 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-ink)", marginBottom: 2 }}>
                     {stat.label}
                   </div>
                   <div style={{ fontSize: 12, color: "var(--color-ink-muted)" }}>
@@ -403,24 +511,24 @@ export default function Home() {
       </section>
 
       {/* Specialties Grid */}
-      <section id="specialties" style={{ padding: "40px 0 80px" }}>
+      <section id="specialties" style={{ padding: "clamp(32px, 6vw, 64px) 0" }}>
         <div className="container">
           <ScrollReveal from="up">
-            <div style={{ textAlign: "center", maxWidth: 620, margin: "0 auto 48px" }}>
+            <div style={{ textAlign: "center", maxWidth: 620, margin: "0 auto clamp(28px, 5vw, 48px)" }}>
               <div
                 className="badge"
                 style={{
-                  marginBottom: 12,
+                  marginBottom: 10,
                   background: "var(--color-brand-teal-glaze)",
                   color: "var(--color-brand-teal)",
                 }}
               >
                 Targeted Clinical Care
               </div>
-              <h2 style={{ fontSize: "clamp(26px, 3vw, 36px)", marginBottom: 12 }}>
+              <h2 style={{ fontSize: "clamp(24px, 3.5vw, 34px)", marginBottom: 10 }}>
                 Specialized Physical Therapies
               </h2>
-              <p style={{ color: "var(--color-ink-secondary)", fontSize: 16 }}>
+              <p style={{ color: "var(--color-ink-secondary)", fontSize: "clamp(14px, 2vw, 16px)" }}>
                 Each patient protocol is uniquely customized to anatomical requirements,
                 recovery stage, and lifestyle goals.
               </p>
@@ -430,22 +538,22 @@ export default function Home() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-              gap: 24,
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
+              gap: 20,
             }}
           >
             {SPECIALTIES.map((s, i) => (
-              <ScrollReveal key={s.title} from="up" delay={i * 80}>
+              <ScrollReveal key={s.title} from="up" delay={i * 60}>
                 <div
                   className="card card-interactive"
                   style={{
                     height: "100%",
                     display: "flex",
                     flexDirection: "column",
-                    padding: "28px",
+                    padding: "clamp(20px, 3.5vw, 26px)",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                     <span
                       style={{
                         fontSize: 11,
@@ -460,9 +568,9 @@ export default function Home() {
                     >
                       {s.tag}
                     </span>
-                    <span style={{ color: "var(--color-ink-faint)", fontSize: 18 }}>→</span>
+                    <span style={{ color: "var(--color-ink-faint)", fontSize: 16 }}>→</span>
                   </div>
-                  <h3 style={{ fontSize: 19, marginBottom: 10, color: "var(--color-ink)" }}>
+                  <h3 style={{ fontSize: 18, marginBottom: 8, color: "var(--color-ink)" }}>
                     {s.title}
                   </h3>
                   <p style={{ fontSize: 14, color: "var(--color-ink-muted)", lineHeight: 1.6, flexGrow: 1, margin: 0 }}>
@@ -476,17 +584,17 @@ export default function Home() {
       </section>
 
       {/* How It Works / TeleRehab Workflow */}
-      <section id="how-it-works" style={{ padding: "40px 0 80px", background: "rgba(47, 133, 118, 0.03)" }}>
+      <section id="how-it-works" style={{ padding: "clamp(36px, 6vw, 64px) 0", background: "rgba(47, 133, 118, 0.03)" }}>
         <div className="container">
           <ScrollReveal from="up">
-            <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto 56px" }}>
-              <div className="badge" style={{ marginBottom: 12, background: "var(--color-brand-accent-soft)", color: "var(--color-brand-accent)" }}>
+            <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto clamp(28px, 5vw, 48px)" }}>
+              <div className="badge" style={{ marginBottom: 10, background: "var(--color-brand-accent-soft)", color: "var(--color-brand-accent)" }}>
                 Continuous Care Protocol
               </div>
-              <h2 style={{ fontSize: "clamp(26px, 3vw, 36px)", marginBottom: 12 }}>
+              <h2 style={{ fontSize: "clamp(24px, 3.5vw, 34px)", marginBottom: 10 }}>
                 The TeleRehab Experience
               </h2>
-              <p style={{ color: "var(--color-ink-secondary)", fontSize: 16 }}>
+              <p style={{ color: "var(--color-ink-secondary)", fontSize: "clamp(14px, 2vw, 16px)" }}>
                 Combining clinical hands-on care in South Mumbai with seamless digital support
                 so you never lose momentum during recovery.
               </p>
@@ -496,36 +604,36 @@ export default function Home() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-              gap: 24,
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
+              gap: 20,
             }}
           >
             {WORKFLOW_STEPS.map((w, i) => (
-              <ScrollReveal key={w.step} from="up" delay={i * 90}>
+              <ScrollReveal key={w.step} from="up" delay={i * 70}>
                 <div
                   className="card"
                   style={{
                     height: "100%",
                     background: "var(--color-surface)",
-                    padding: "28px 24px",
+                    padding: "24px 20px",
                     position: "relative",
                   }}
                 >
                   <div
                     style={{
                       fontFamily: "var(--font-display)",
-                      fontSize: 32,
+                      fontSize: 28,
                       fontWeight: 600,
                       color: "var(--color-brand-teal)",
-                      opacity: 0.35,
-                      marginBottom: 16,
+                      opacity: 0.4,
+                      marginBottom: 12,
                       lineHeight: 1,
                     }}
                   >
                     {w.step}
                   </div>
-                  <h3 style={{ fontSize: 17, marginBottom: 10 }}>{w.title}</h3>
-                  <p style={{ fontSize: 14, color: "var(--color-ink-muted)", lineHeight: 1.55, margin: 0 }}>
+                  <h3 style={{ fontSize: 16, marginBottom: 8 }}>{w.title}</h3>
+                  <p style={{ fontSize: 13, color: "var(--color-ink-muted)", lineHeight: 1.55, margin: 0 }}>
                     {w.desc}
                   </p>
                 </div>
@@ -536,13 +644,13 @@ export default function Home() {
       </section>
 
       {/* About Dr. Neha Dhanokar */}
-      <section id="about" style={{ padding: "60px 0 80px" }}>
+      <section id="about" style={{ padding: "clamp(36px, 6vw, 64px) 0" }}>
         <div className="container">
           <ScrollReveal from="up">
             <div
               className="card glass-panel"
               style={{
-                padding: "48px 40px",
+                padding: "clamp(24px, 5vw, 44px)",
                 borderRadius: "var(--radius-lg)",
                 background: "linear-gradient(135deg, rgba(237, 243, 241, 0.8), rgba(255, 255, 255, 0.95))",
                 border: "1px solid rgba(47, 133, 118, 0.15)",
@@ -551,25 +659,25 @@ export default function Home() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1.2fr 1fr",
-                  gap: 40,
+                  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+                  gap: "clamp(24px, 4vw, 36px)",
                   alignItems: "center",
                 }}
               >
                 <div>
-                  <div className="badge" style={{ marginBottom: 14, background: "var(--color-brand-teal-glaze)", color: "var(--color-brand-teal)" }}>
+                  <div className="badge" style={{ marginBottom: 12, background: "var(--color-brand-teal-glaze)", color: "var(--color-brand-teal)" }}>
                     Physiotherapist & Founder
                   </div>
-                  <h2 style={{ fontSize: "clamp(24px, 2.5vw, 32px)", marginBottom: 16 }}>
+                  <h2 style={{ fontSize: "clamp(22px, 3vw, 30px)", marginBottom: 14 }}>
                     About Dr. Neha Dhanokar
                   </h2>
-                  <p style={{ fontSize: 16, color: "var(--color-ink)", lineHeight: 1.65, marginBottom: 16 }}>
+                  <p style={{ fontSize: "clamp(14px, 1.8vw, 15px)", color: "var(--color-ink)", lineHeight: 1.65, marginBottom: 14 }}>
                     Dr. Neha Dhanokar is a dedicated physiotherapist specialising in Orthopaedic, Neuro,
                     Geriatric, Post-operative, Women's health, and General physiotherapy. With 2+ years of
                     hands-on clinical experience, she combines home visits with telehealth follow-ups
                     to deliver uninterrupted, empathetic patient care across South Mumbai.
                   </p>
-                  <p style={{ fontSize: 14, color: "var(--color-ink-secondary)", lineHeight: 1.6 }}>
+                  <p style={{ fontSize: 13, color: "var(--color-ink-secondary)", lineHeight: 1.6 }}>
                     Available 7 days a week, every patient consultation includes transparent session notes,
                     carefully adjusted exercise progressions, and video guidance to ensure technique precision.
                   </p>
@@ -578,31 +686,31 @@ export default function Home() {
                 <div
                   style={{
                     background: "var(--color-surface)",
-                    padding: 24,
+                    padding: "clamp(16px, 3vw, 24px)",
                     borderRadius: "var(--radius-md)",
                     border: "1px solid var(--color-border)",
                     boxShadow: "var(--shadow-sm)",
                   }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-ink)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-ink)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
                     Practice Snapshot
                   </div>
-                  <div style={{ display: "grid", gap: 12, fontSize: 14 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border-subtle)", paddingBottom: 8 }}>
+                  <div style={{ display: "grid", gap: 10, fontSize: 13 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, borderBottom: "1px solid var(--color-border-subtle)", paddingBottom: 8 }}>
                       <span style={{ color: "var(--color-ink-muted)" }}>Modality</span>
                       <strong style={{ color: "var(--color-ink)" }}>Home Visits & TeleRehab</strong>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border-subtle)", paddingBottom: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, borderBottom: "1px solid var(--color-border-subtle)", paddingBottom: 8 }}>
                       <span style={{ color: "var(--color-ink-muted)" }}>Region</span>
                       <strong style={{ color: "var(--color-ink)" }}>South Mumbai, Maharashtra</strong>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border-subtle)", paddingBottom: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, borderBottom: "1px solid var(--color-border-subtle)", paddingBottom: 8 }}>
                       <span style={{ color: "var(--color-ink-muted)" }}>Availability</span>
                       <strong style={{ color: "var(--color-brand-emerald)" }}>7 Days / Week</strong>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ color: "var(--color-ink-muted)" }}>Google Meet Integration</span>
-                      <strong style={{ color: "var(--color-brand-teal)" }}>Automated Link Creation</strong>
+                    <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+                      <span style={{ color: "var(--color-ink-muted)" }}>Google Meet Sync</span>
+                      <strong style={{ color: "var(--color-brand-teal)" }}>Automated Integration</strong>
                     </div>
                   </div>
                 </div>
@@ -613,12 +721,12 @@ export default function Home() {
       </section>
 
       {/* Areas Served Strip */}
-      <section style={{ padding: "20px 0 60px" }}>
+      <section style={{ padding: "16px 0 48px" }}>
         <div className="container">
           <ScrollReveal from="up">
-            <div style={{ textAlign: "center", marginBottom: 24 }}>
-              <h2 style={{ fontSize: 24, marginBottom: 8 }}>South Mumbai Home Visit Coverage</h2>
-              <p style={{ fontSize: 14, color: "var(--color-ink-muted)" }}>
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <h2 style={{ fontSize: "clamp(20px, 3vw, 24px)", marginBottom: 6 }}>South Mumbai Home Visit Coverage</h2>
+              <p style={{ fontSize: 13, color: "var(--color-ink-muted)" }}>
                 Prompt doorstep visits available across key South Mumbai neighbourhoods:
               </p>
             </div>
@@ -626,7 +734,7 @@ export default function Home() {
               style={{
                 display: "flex",
                 flexWrap: "wrap",
-                gap: 10,
+                gap: 8,
                 justifyContent: "center",
                 maxWidth: 880,
                 margin: "0 auto",
@@ -637,8 +745,8 @@ export default function Home() {
                   key={a}
                   className="badge"
                   style={{
-                    fontSize: 13,
-                    padding: "6px 14px",
+                    fontSize: 12,
+                    padding: "5px 12px",
                     background: "var(--color-surface)",
                     borderColor: "var(--color-border)",
                     boxShadow: "var(--shadow-sm)",
@@ -653,14 +761,14 @@ export default function Home() {
       </section>
 
       {/* Strong Final CTA Card */}
-      <section style={{ padding: "40px 0 80px" }}>
+      <section style={{ padding: "24px 0 64px" }}>
         <div className="container">
           <ScrollReveal from="up">
             <div
               className="card"
               style={{
                 textAlign: "center",
-                padding: "64px 32px",
+                padding: "clamp(36px, 6vw, 56px) clamp(20px, 4vw, 32px)",
                 background: "linear-gradient(135deg, var(--color-brand-primary) 0%, var(--color-brand-teal) 100%)",
                 color: "#FFFFFF",
                 borderRadius: "var(--radius-lg)",
@@ -684,29 +792,31 @@ export default function Home() {
                     background: "rgba(255, 255, 255, 0.16)",
                     color: "#FFFFFF",
                     borderColor: "rgba(255, 255, 255, 0.3)",
-                    marginBottom: 16,
+                    marginBottom: 14,
                   }}
                 >
                   Start Your Recovery
                 </div>
-                <h2 style={{ fontSize: "clamp(28px, 3.2vw, 40px)", color: "#FFFFFF", marginBottom: 16 }}>
+                <h2 style={{ fontSize: "clamp(24px, 3.5vw, 36px)", color: "#FFFFFF", marginBottom: 14 }}>
                   Ready to Regain Your Strength?
                 </h2>
-                <p style={{ color: "rgba(255, 255, 255, 0.85)", fontSize: 16, marginBottom: 32, lineHeight: 1.6 }}>
+                <p style={{ color: "rgba(255, 255, 255, 0.9)", fontSize: "clamp(14px, 2vw, 16px)", marginBottom: 28, lineHeight: 1.6 }}>
                   Create an account in under two minutes to pick an open clinical slot, review
                   your custom therapy plan, and consult with Dr. Neha Dhanokar.
                 </p>
-                <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
                   <Link
                     to="/signup"
                     className="btn"
                     style={{
                       background: "#FFFFFF",
                       color: "var(--color-brand-primary)",
-                      padding: "14px 32px",
+                      padding: "12px 28px",
                       fontSize: 15,
                       fontWeight: 600,
                       borderRadius: "var(--radius-sm)",
+                      flex: "1 1 auto",
+                      minWidth: "min(100%, 180px)",
                     }}
                   >
                     Create Account
@@ -718,9 +828,11 @@ export default function Home() {
                       background: "transparent",
                       color: "#FFFFFF",
                       borderColor: "rgba(255, 255, 255, 0.4)",
-                      padding: "14px 28px",
+                      padding: "12px 24px",
                       fontSize: 15,
                       borderRadius: "var(--radius-sm)",
+                      flex: "1 1 auto",
+                      minWidth: "min(100%, 140px)",
                     }}
                   >
                     Log In
@@ -736,7 +848,7 @@ export default function Home() {
       <footer
         style={{
           borderTop: "1px solid var(--color-border)",
-          padding: "36px 0 48px",
+          padding: "28px 0 36px",
           background: "var(--color-surface)",
           fontSize: 13,
           color: "var(--color-ink-muted)",
@@ -749,23 +861,35 @@ export default function Home() {
             justifyContent: "space-between",
             alignItems: "center",
             flexWrap: "wrap",
-            gap: 20,
+            gap: 16,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 15, color: "var(--color-ink)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 14, color: "var(--color-ink)" }}>
               Neuro TeleRehab
             </span>
             <span>© {new Date().getFullYear()} Dr. Neha Dhanokar. All rights reserved.</span>
           </div>
 
-          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             <Link to="/privacy-policy" style={{ color: "var(--color-ink-muted)" }}>Privacy Policy</Link>
-            <Link to="/terms" style={{ color: "var(--color-ink-muted)" }}>Terms of Service</Link>
-            <Link to="/data-request" style={{ color: "var(--color-ink-muted)" }}>DPDP Data Rights</Link>
+            <Link to="/terms" style={{ color: "var(--color-ink-muted)" }}>Terms</Link>
+            <Link to="/data-request" style={{ color: "var(--color-ink-muted)" }}>Data Rights</Link>
           </div>
         </div>
       </footer>
+
+      {/* Embedded CSS for Home-specific Media Queries */}
+      <style>{`
+        @media (max-width: 767px) {
+          .home-desktop-nav {
+            display: none !important;
+          }
+          .home-mobile-toggle {
+            display: flex !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

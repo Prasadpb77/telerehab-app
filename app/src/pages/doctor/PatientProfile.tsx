@@ -162,7 +162,7 @@ export default function DoctorPatientProfile() {
         </div>
       </ScrollReveal>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 28 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))", gap: 28 }}>
         {/* Left Column: Session Clinical Notes */}
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
