@@ -91,10 +91,6 @@ export const api = {
     approveNote: (noteId: string) =>
       authedFetch(`/api/meet-transcript/notes/${noteId}/approve`, { method: "POST" }),
   },
-  chatbot: {
-    send: (payload: { message: string; patient_id?: string }) =>
-      authedFetch("/api/chatbot", { method: "POST", body: JSON.stringify(payload) }),
-  },
   finance: {
     query: (month: string, year: string) => {
       const q = new URLSearchParams();

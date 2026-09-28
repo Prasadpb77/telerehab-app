@@ -262,10 +262,10 @@ export default function PatientDashboard() {
               icon: "📋",
             },
             {
-              title: "Care Assistant",
-              desc: "Ask questions about your exercises and care plan",
-              to: "/patient/chatbot",
-              icon: "💬",
+              title: "Therapy Plan",
+              desc: "Prescribed exercises and motor patterns",
+              to: "/patient/exercises",
+              icon: "🧘",
             },
             {
               title: "Book Next Session",

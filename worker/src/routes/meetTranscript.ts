@@ -62,22 +62,54 @@ meetTranscript.post("/", requireRole("doctor"), async (c) => {
     .single();
   if (transcriptErr) return c.json({ error: transcriptErr.message }, 500);
 
-  // Generate the structured AI draft note immediately.
-  const summary = await summarizeTranscript(c.env, body.raw_text);
+  // Fail-closed AI consent check:
+  // Before sending any transcript data to Cloudflare Workers AI, verify that
+  // the patient has an active, explicit consent record for 'ai_note_drafting'.
+  // If no record exists (e.g. legacy patient or never opted in) or the most
+  // recent record has granted = false, we fail closed: do NOT call the AI API.
+  // Instead, create a blank draft note for the doctor to fill manually.
+  const { data: consentRow } = await supabase
+    .from("consent_records")
+    .select("granted")
+    .eq("patient_id", session.patient_id)
+    .eq("purpose", "ai_note_drafting")
+    .order("recorded_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const hasAiConsent = consentRow?.granted === true;
+
+  let notePayload;
+  if (hasAiConsent) {
+    const summary = await summarizeTranscript(c.env, body.raw_text);
+    notePayload = {
+      session_id: body.session_id,
+      patient_id: session.patient_id,
+      doctor_id: session.doctor_id,
+      status: "draft",
+      ai_generated: true,
+      ...summary,
+    };
+  } else {
+    // No consent given or consent withdrawn: fall back cleanly to manual drafting.
+    notePayload = {
+      session_id: body.session_id,
+      patient_id: session.patient_id,
+      doctor_id: session.doctor_id,
+      status: "draft",
+      ai_generated: false,
+      concerns: "",
+      therapy_discussed: "",
+      exercises_discussed: "",
+      patient_feedback: "",
+      progress_notes: "",
+      follow_up: "",
+    };
+  }
 
   const { data: note, error: noteErr } = await supabase
     .from("session_notes")
-    .upsert(
-      {
-        session_id: body.session_id,
-        patient_id: session.patient_id,
-        doctor_id: session.doctor_id,
-        status: "draft",
-        ai_generated: true,
-        ...summary,
-      },
-      { onConflict: "session_id" }
-    )
+    .upsert(notePayload, { onConflict: "session_id" })
     .select()
     .single();
   if (noteErr) return c.json({ error: noteErr.message }, 500);

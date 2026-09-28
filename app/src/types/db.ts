@@ -34,7 +34,11 @@ export interface Appointment {
   notes: string | null;
 }
 
-export type ConsentPurpose = "account_and_booking" | "health_notes" | "marketing_communications";
+export type ConsentPurpose =
+  | "account_and_booking"
+  | "health_notes"
+  | "marketing_communications"
+  | "ai_note_drafting";
 
 export type NoteStatus = "draft" | "approved" | "rejected";
 

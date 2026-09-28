@@ -16,13 +16,12 @@ import PatientAppointments from "../pages/patient/Appointments";
 import PatientExercises from "../pages/patient/Exercises";
 import PatientSessionHistory from "../pages/patient/SessionHistory";
 import PatientProgress from "../pages/patient/Progress";
-import PatientChatbot from "../pages/patient/Chatbot";
+import PatientPrivacySettings from "../pages/patient/PrivacySettings";
 
 import DoctorDashboard from "../pages/doctor/Dashboard";
 import DoctorPatientList from "../pages/doctor/PatientList";
 import DoctorPatientProfile from "../pages/doctor/PatientProfile";
 import DoctorCalendar from "../pages/doctor/Calendar";
-import DoctorChatbot from "../pages/doctor/Chatbot";
 import DoctorExerciseLibrary from "../pages/doctor/ExerciseLibrary";
 import DoctorReminders from "../pages/doctor/Reminders";
 import DoctorFinance from "../pages/doctor/Finance";
@@ -50,7 +49,7 @@ export const router = createBrowserRouter([
       { path: "exercises", element: <PatientExercises /> },
       { path: "history", element: <PatientSessionHistory /> },
       { path: "progress", element: <PatientProgress /> },
-      { path: "chatbot", element: <PatientChatbot /> },
+      { path: "privacy-settings", element: <PatientPrivacySettings /> },
     ],
   },
   {
@@ -69,7 +68,6 @@ export const router = createBrowserRouter([
       { path: "reminders", element: <DoctorReminders /> },
       { path: "finance", element: <DoctorFinance /> },
       { path: "insights", element: <DoctorInsights /> },
-      { path: "chatbot", element: <DoctorChatbot /> },
     ],
   },
   { path: "*", element: <Navigate to="/" replace /> },

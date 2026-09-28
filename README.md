@@ -118,19 +118,10 @@ workflow change. Every submission requires `sessions.recording_consent_confirmed
 approves; only `status = 'approved'` notes are ever visible to the patient
 (enforced by RLS, not just app logic).
 
-## AI chatbot scoping
-
-Both chatbots (`worker/src/routes/chatbot.ts`) build their context by
-querying Supabase with the service-role key but constrained to exactly the
-rows the caller may see (patient: their own approved notes/active
-exercises/recent progress; doctor: same, for a patient id they pass), then
-pass only that JSON as context to Workers AI with a system prompt that forbids
-diagnosis or treatment changes. Nothing outside that context block can enter
-the answer.
-
 ## What's deliberately not built (per spec)
 
-Multiple doctors/therapists, payments, wearable integrations, computer
-vision, advanced analytics, and any autonomous diagnosis or treatment
-change — the chatbot's system prompt and doctor approval gate are the two
-enforcement points for the "no autonomous diagnosis/prescription" rule.
+Multiple doctors/therapists, wearable integrations, computer vision,
+interactive chatbots (removed for patient privacy / data minimisation),
+and any autonomous diagnosis or treatment change — the doctor approval gate
+for draft clinical notes is the key enforcement point for the "no autonomous
+diagnosis/prescription" rule.

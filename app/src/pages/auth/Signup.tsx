@@ -3,8 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
 import ScrollReveal from "../../components/ScrollReveal";
-
-const POLICY_VERSION = "2026-09-26";
+import { POLICY_VERSION } from "../../lib/constants";
 
 export default function Signup() {
   const [fullName, setFullName] = useState("");
@@ -13,6 +12,7 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [consentBooking, setConsentBooking] = useState(false);
   const [consentHealth, setConsentHealth] = useState(false);
+  const [consentAiNote, setConsentAiNote] = useState(false);
   const [consentMarketing, setConsentMarketing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,6 +37,7 @@ export default function Signup() {
       await supabase.from("consent_records").insert([
         { patient_id: user.id, purpose: "account_and_booking", granted: true, policy_version: POLICY_VERSION },
         { patient_id: user.id, purpose: "health_notes", granted: consentHealth, policy_version: POLICY_VERSION },
+        { patient_id: user.id, purpose: "ai_note_drafting", granted: consentAiNote, policy_version: POLICY_VERSION },
         { patient_id: user.id, purpose: "marketing_communications", granted: consentMarketing, policy_version: POLICY_VERSION },
       ]);
 
@@ -183,6 +184,18 @@ export default function Signup() {
                     />
                     <span>
                       <strong>Optional:</strong> I consent to sharing clinical notes regarding symptoms to assist preparation.
+                    </span>
+                  </label>
+
+                  <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--color-ink-secondary)", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      style={{ width: "auto", marginTop: 2, cursor: "pointer" }}
+                      checked={consentAiNote}
+                      onChange={(e) => setConsentAiNote(e.target.checked)}
+                    />
+                    <span>
+                      <strong>Optional:</strong> I consent to my session transcripts being processed by a third-party AI service to help draft my visit notes (your therapist always reviews and approves these before you see them; you can withdraw this anytime).
                     </span>
                   </label>
 
